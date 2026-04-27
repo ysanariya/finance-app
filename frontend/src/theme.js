@@ -1,49 +1,59 @@
 export const theme = {
   colors: {
-    // Core
-    background: "#121212",
-    card: "#181818",
-    border: "#2a2a2a",
+    // Backgrounds — warm blacks, not cold neutral
+    background: "#0C0B09",
+    sidebar:    "#111009",
+    card:       "#181610",
+    cardAlt:    "#1F1D15",
+    border:     "#2A2720",
 
-    // Text
-    textPrimary: "#e5e7eb",
-    textMuted: "#9ca3af",
+    // Text hierarchy
+    textPrimary:   "#EDE8DF",  // warm white
+    textSecondary: "#8A837A",  // mid grey
+    textMuted:     "#736E6A",  // near-invisible
 
-    // Semantic
-    positive: "#1D9E75",
-    negative: "#D85A30",
-    warning: "#EF9F27",
+    // Semantic — clear & unambiguous
+    positive:    "#3DB882",    // green: good metrics, assets, surplus
+    positiveDim: "#3DB88214",
+    negative:    "#D95F4B",    // red: liabilities, expenses, bad deltas
+    negativeDim: "#D95F4B14",
+    neutral:     "#7986B8",    // indigo: income, neutral data
+    neutralDim:  "#7986B814",
 
-    // Asset categories
-    stocks: "#4CD96A",
-    epf: "#5DCAA5",
-    cash: "#85B7EB",
-    gold: "#EF9F27",
+    // Asset category colours (allocation chart only)
+    cat: {
+      equities:    "#3DB882",  // green
+      cash:        "#7986B8",  // indigo
+      gold:        "#C9A84C",  // actual gold
+      fd:          "#A89060",  // sand — fixed income / FD
+      retirement:  "#7986B8",  // indigo
+      real_estate: "#A89060",  // sand
+      receivables: "#6B6560",  // muted
+      otherassets: "#3D3A34",  // very muted
+    },
 
-    // Badge backgrounds
+    // Badges on dark backgrounds
     badge: {
-      healthyBg: "#E1F5EE",
-      healthyText: "#085041",
-
-      moderateBg: "#FAEEDA",
-      moderateText: "#633806",
-
-      riskBg: "#FAECE7",
-      riskText: "#4A1B0C",
+      healthyBg:   "#0F3D2A",
+      healthyText: "#3DB882",
+      riskBg:      "#3D1812",
+      riskText:    "#D95F4B",
+      neutralBg:   "#1A1E30",
+      neutralText: "#7986B8",
     },
 
     // Chart
     chart: {
-      line: "#1D9E75",
-      grid: "rgba(255,255,255,0.06)",
-      axis: "rgba(255,255,255,0.45)",
-      area: "rgba(29,158,117,0.10)",
+      grid: "rgba(255,255,255,0.10)",
+      axis: "#6B6560",
+      area: "rgba(61,184,130,0.07)",
     },
   },
 
   layout: {
-    maxWidth: "1200px",
-    radius: "16px",
-    spacing: "20px",
+    sidebarWidth: "160px",
+    radius:       "10px",
+    cardRadius:   "10px",
+    spacing:      "10px",
   },
 };

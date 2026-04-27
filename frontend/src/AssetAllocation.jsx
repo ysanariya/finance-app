@@ -1,197 +1,134 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./api";
 import { theme } from "./theme";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+
+const c = theme.colors;
+
+// Maps every backend category to a palette colour
+function getCategoryColor(category) {
+  return c.cat[category.toLowerCase()] || c.textMuted;
+}
 
 export default function AssetAllocation() {
-  const [data, setData] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(null);
+  const [data, setData]           = useState([]);
+  const [hovered, setHovered]     = useState(null);
 
+  // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const res = await fetchWithAuth(
-        "http://localhost:8000/assets/breakdown"
-      );
+      const res = await fetchWithAuth("http://localhost:8000/assets/breakdown");
       setData(res);
     }
     load();
   }, []);
 
-  // 🎯 STRICT palette mapping (NO RANDOM COLORS)
-  const getColor = (category) => {
-    switch (category.toLowerCase()) {
-      case "equities":
-        return theme.colors.stocks;
-      case "epf":
-      case "ppf":
-        return theme.colors.epf;
-      case "cash":
-      case "bank":
-        return theme.colors.cash;
-      case "gold":
-        return theme.colors.gold;
-    }
-  };
-
   const total = data.reduce((sum, item) => sum + item.total, 0);
-
-  const formatLakh = (val) =>
-    `₹${(val / 100000).toFixed(1)}L`;
+  const formatLakh = (val) => `₹${(val / 100000).toFixed(1)}L`;
 
   return (
     <div
       style={{
-        background: "#141414",
-        borderRadius: "16px",
-        border: `1px solid ${theme.colors.border}`,
-        padding: "16px",
+        background: c.card,
+        border: `0.5px solid ${c.border}`,
+        borderRadius: theme.layout.cardRadius,
+        padding: "14px 16px",
       }}
     >
-      {/* TITLE */}
       <div
         style={{
-          fontSize: "12px",
-          color: theme.colors.textMuted,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: "12px",
-          letterSpacing: "0.06em",
         }}
       >
-        ASSET ALLOCATION
-      </div>
-
-      {/* CHART */}
-      <div style={{ position: "relative", height: "240px" }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="total"
-              nameKey="category"
-              innerRadius={70}
-              outerRadius={100}
-              paddingAngle={2}
-              onMouseEnter={(_, index) => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={getColor(entry.category)}
-                  opacity={
-                    activeIndex === null || activeIndex === index
-                      ? 1
-                      : 0.3
-                  }
-                />
-              ))}
-            </Pie>
-
-            {/* TOOLTIP */}
-            <Tooltip
-              formatter={(value, name) => [
-                formatLakh(value),
-                name,
-              ]}
-              contentStyle={{
-                backgroundColor: "#181818",
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: "8px",
-                fontSize: "12px",
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-
-        {/* 🎯 CENTER LABEL */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "12px",
-              color: theme.colors.textMuted,
-            }}
-          >
-            Total
-          </div>
-
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: theme.colors.textPrimary,
-            }}
-          >
-            {formatLakh(total)}
-          </div>
+        <div style={{ fontSize: "9px", color: c.textMuted, letterSpacing: "0.1em" }}>
+          ASSET ALLOCATION
+        </div>
+        <div style={{ fontSize: "13px", fontWeight: "500", color: c.textPrimary }}>
+          {formatLakh(total)}
         </div>
       </div>
 
-      {/* 🎯 LEGEND */}
+      {/* Segmented bar */}
       <div
         style={{
-          marginTop: "12px",
+          height: "6px",
+          borderRadius: "3px",
           display: "flex",
-          flexDirection: "column",
-          gap: "6px",
+          gap: "2px",
+          overflow: "hidden",
+          marginBottom: "14px",
         }}
       >
-        {data.map((item, index) => {
-          const percent =
-            total > 0
-              ? ((item.total / total) * 100).toFixed(1)
-              : 0;
+        {data.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              flex: item.total,
+              background: getCategoryColor(item.category),
+              borderRadius: "2px",
+              opacity: hovered === null || hovered === i ? 1 : 0.3,
+              transition: "opacity 0.15s",
+              cursor: "default",
+            }}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+          />
+        ))}
+      </div>
+
+      {/* Legend rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+        {data.map((item, i) => {
+          const pct = total > 0 ? ((item.total / total) * 100).toFixed(1) : 0;
+          const color = getCategoryColor(item.category);
 
           return (
             <div
-              key={index}
+              key={i}
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                fontSize: "12px",
+                opacity: hovered === null || hovered === i ? 1 : 0.4,
+                transition: "opacity 0.15s",
+                cursor: "default",
               }}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
             >
-              {/* LEFT */}
+              {/* Left: dot + name */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
-                  color: theme.colors.textPrimary,
+                  gap: "7px",
+                  fontSize: "11px",
+                  color: c.textSecondary,
                 }}
               >
                 <div
                   style={{
-                    width: "8px",
-                    height: "8px",
+                    width: "6px",
+                    height: "6px",
                     borderRadius: "50%",
-                    background: getColor(item.category),
+                    background: color,
+                    flexShrink: 0,
                   }}
-                ></div>
-
+                />
                 {item.category}
               </div>
 
-              {/* RIGHT */}
+              {/* Right: pct · value */}
               <div
                 style={{
-                  color: theme.colors.textMuted,
+                  fontSize: "11px",
+                  color: c.textMuted,
+                  fontVariantNumeric: "tabular-nums",
                 }}
               >
-                {percent}% · {formatLakh(item.total)}
+                {pct}% · {formatLakh(item.total)}
               </div>
             </div>
           );

@@ -1,161 +1,154 @@
 import {
-  LineChart,
+  BarChart,
+  Bar,
   Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
-  BarChart,
-  Bar
+  ComposedChart,
 } from "recharts";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./api";
 import { theme } from "./theme";
 
+const c = theme.colors;
+
+const LEGEND = [
+  { key: "income",         color: c.positive, label: "Income" },
+  { key: "fixed_expenses", color: c.negative, label: "Expenses" },
+  { key: "surplus",        color: c.neutral,  label: "Surplus" },
+];
+
 export default function CashflowChart() {
   const [data, setData] = useState([]);
 
+  // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       const res = await fetchWithAuth(
         "http://localhost:8000/dashboard/cashflow-trend?start_year=2026&start_month=1&end_year=2026&end_month=6"
       );
-
       setData(res);
     }
-
     load();
   }, []);
 
-  const formatLakh = (val) =>
-    `₹${(val / 100000).toFixed(1)}L`;
+  const formatLakh = (val) => `₹${(val / 100000).toFixed(1)}L`;
 
   return (
     <div
       style={{
-        background: "#141414",
-        borderRadius: "16px",
-        border: `1px solid ${theme.colors.border}`,
-        padding: "16px",
+        background: c.card,
+        border: `0.5px solid ${c.border}`,
+        borderRadius: theme.layout.cardRadius,
+        padding: "14px 16px",
       }}
     >
-      {/* TITLE */}
+      {/* Title + legend */}
       <div
         style={{
-          fontSize: "12px",
-          color: theme.colors.textMuted,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: "12px",
-          letterSpacing: "0.06em",
         }}
       >
-        CASHFLOW TREND
+        <div style={{ fontSize: "9px", color: c.textMuted, letterSpacing: "0.1em" }}>
+          CASHFLOW TREND
+        </div>
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          {LEGEND.map((l) => (
+            <div
+              key={l.key}
+              style={{ display: "flex", alignItems: "center", gap: "4px" }}
+            >
+              <div
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "1.5px",
+                  background: l.color,
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ fontSize: "9px", color: c.textMuted }}>
+                {l.label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data}>
+      {/*
+        ComposedChart lets us mix Bar + Line in one chart.
+        Previous code had a nested duplicate BarChart which broke rendering.
+      */}
+      <ResponsiveContainer width="100%" height={220}>
+        <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid
-            stroke={theme.colors.chart.grid}
+            stroke={c.chart.grid}
             strokeDasharray="3 3"
+            vertical={false}
           />
 
           <XAxis
             dataKey="month"
-            tick={{ fill: theme.colors.chart.axis, fontSize: 12 }}
+            tick={{ fill: c.chart.axis, fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
           />
 
           <YAxis
             tickFormatter={(v) => `₹${(v / 100000).toFixed(1)}L`}
-            tick={{ fill: theme.colors.chart.axis, fontSize: 12 }}
+            tick={{ fill: c.chart.axis, fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={52}
           />
 
           <Tooltip
             formatter={(value) => formatLakh(value)}
             contentStyle={{
-              backgroundColor: "#181818",
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: "8px",
-              fontSize: "12px",
+              backgroundColor: c.card,
+              border: `0.5px solid ${c.border}`,
+              borderRadius: "6px",
+              fontSize: "11px",
+              color: c.textPrimary,
             }}
+            labelStyle={{ color: c.textMuted, marginBottom: "2px" }}
           />
 
-          <ResponsiveContainer width="100%" height={300}>
-  <BarChart data={data}>
-    <CartesianGrid
-      stroke={theme.colors.chart.grid}
-      strokeDasharray="3 3"
-    />
-
-    <XAxis
-      dataKey="month"
-      tick={{ fill: theme.colors.chart.axis, fontSize: 12 }}
-    />
-
-    <YAxis
-      tickFormatter={(v) => `₹${(v / 100000).toFixed(1)}L`}
-      tick={{ fill: theme.colors.chart.axis, fontSize: 12 }}
-    />
-
-    <Tooltip
-      formatter={(value) => formatLakh(value)}
-      contentStyle={{
-        backgroundColor: "#181818",
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: "8px",
-        fontSize: "12px",
-      }}
-    />
-
-    {/* Income */}
-    <Bar
-      dataKey="income"
-      fill={theme.colors.positive}
-      radius={[6, 6, 0, 0]}
-      barSize={20}
-    />
-
-    {/* Expenses */}
-    <Bar
-      dataKey="fixed_expenses"
-      fill={theme.colors.negative}
-      radius={[6, 6, 0, 0]}
-      barSize={20}
-    />
-
-    {/* Subtle surplus line */}
-    <Line
-      type="monotone"
-      dataKey="surplus"
-      stroke="#85B7EB" // 👈 softer blue from your palette
-      strokeWidth={2}
-      dot={false}
-    />
-  </BarChart>
-</ResponsiveContainer>
-
-          {/* Income */}
+          {/* Income bars */}
           <Bar
             dataKey="income"
-            fill={theme.colors.positive}
-            radius={[4, 4, 0, 0]}
+            fill={c.positive}
+            fillOpacity={0.25}
+            radius={[3, 3, 0, 0]}
+            barSize={18}
           />
 
-          {/* Expenses */}
+          {/* Expense bars */}
           <Bar
             dataKey="fixed_expenses"
-            fill={theme.colors.negative}
-            radius={[4, 4, 0, 0]}
+            fill={c.negative}
+            fillOpacity={0.25}
+            radius={[3, 3, 0, 0]}
+            barSize={18}
           />
 
-          {/* Surplus line */}
+          {/* Surplus line overlay */}
           <Line
             type="monotone"
             dataKey="surplus"
-            stroke={theme.colors.stocks}
-            strokeWidth={2}
+            stroke={c.neutral}
+            strokeWidth={1.5}
+            dot={false}
+            strokeDasharray="4 2"
           />
-        </BarChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

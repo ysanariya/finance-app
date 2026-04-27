@@ -2,54 +2,59 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./api";
 import { theme } from "./theme";
 
-function StatCard({ label, value, subtext, color }) {
+const c = theme.colors;
+
+function StatCard({ label, value, delta, deltaPositive, subtext, valueColor }) {
   return (
     <div
       style={{
-        background: "#2b2b2b", // 👈 slightly darker than main card
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: "14px",
-        padding: "10px 10px",
+        background: c.card,
+        border: `0.5px solid ${c.border}`,
+        borderRadius: theme.layout.cardRadius,
+        padding: "11px 13px",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
-        minHeight: "90px",
+        gap: "4px",
+        minWidth: 0,
       }}
     >
-      {/* LABEL */}
       <div
         style={{
-          fontSize: "11px",
-          color: theme.colors.textMuted,
-          letterSpacing: "0.08em",
+          fontSize: "9px",
+          color: c.textMuted,
+          letterSpacing: "0.09em",
           fontWeight: "500",
         }}
       >
         {label}
       </div>
 
-      {/* VALUE */}
       <div
         style={{
           fontSize: "20px",
-          fontWeight: "600",
-          color: color || theme.colors.textPrimary,
-          marginTop: "6px",
+          fontWeight: "500",
+          color: valueColor || c.textPrimary,
+          letterSpacing: "-0.5px",
+          lineHeight: 1.1,
         }}
       >
         {value}
       </div>
 
-      {/* SUBTEXT */}
-      {subtext && (
+      {(delta || subtext) && (
         <div
           style={{
-            fontSize: "11px",
-            color: theme.colors.textMuted,
-            marginTop: "4px",
+            fontSize: "10px",
+            color: delta
+              ? deltaPositive
+                ? c.positive
+                : c.negative
+              : c.textMuted,
           }}
         >
-          {subtext}
+          {delta
+            ? `${deltaPositive ? "↑" : "↓"} ${delta}`
+            : subtext}
         </div>
       )}
     </div>
@@ -59,11 +64,10 @@ function StatCard({ label, value, subtext, color }) {
 export default function TopStatCards() {
   const [data, setData] = useState(null);
 
+  // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const res = await fetchWithAuth(
-        "http://localhost:8000/dashboard/summary"
-      );
+      const res = await fetchWithAuth("http://localhost:8000/dashboard/summary");
       setData(res);
     }
     load();
@@ -77,36 +81,39 @@ export default function TopStatCards() {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: "10px", // tighter than before
-        marginBottom: "10px",
+        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+        gap: "10px",
       }}
     >
       <StatCard
         label="TOTAL ASSETS"
         value={formatLakh(data.total_assets)}
-        subtext="—"
-        color={theme.colors.positive}
+        delta="2.3% MoM"
+        deltaPositive={true}
+        valueColor={c.positive}
       />
 
       <StatCard
         label="TOTAL LIABILITIES"
         value={formatLakh(data.total_liabilities)}
-        subtext="—"
-        color={theme.colors.negative}
+        delta="0.4% MoM"
+        deltaPositive={false}
+        valueColor={c.negative}
       />
 
       <StatCard
         label="MONTHLY INCOME"
         value="₹1.4L"
         subtext="Salary + Freelance"
+        valueColor={c.neutral}
       />
 
       <StatCard
         label="MONTHLY SURPLUS"
         value="₹42K"
-        subtext="30% savings rate"
-        color={theme.colors.positive}
+        delta="vs 26% last mo"
+        deltaPositive={true}
+        valueColor={c.positive}
       />
     </div>
   );

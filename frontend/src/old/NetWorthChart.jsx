@@ -6,33 +6,33 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Area,
 } from "recharts";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./api";
 import { theme } from "./theme";
 
-const c = theme.colors;
-
 export default function NetWorthChart() {
   const [data, setData] = useState([]);
 
-  // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function loadData() {
       try {
         const result = await fetchWithAuth(
           "http://localhost:8000/dashboard/trend"
         );
-        setData(
-          result.map((item) => ({
-            date:      item.date,
-            net_worth: item.net_worth,
-          }))
-        );
+
+        const formatted = result.map((item) => ({
+          date: item.date,
+          net_worth: item.net_worth,
+        }));
+
+        setData(formatted);
       } catch (err) {
         console.error(err);
       }
     }
+
     loadData();
   }, []);
 
@@ -40,36 +40,34 @@ export default function NetWorthChart() {
     data.length > 1 &&
     data[data.length - 1].net_worth >= data[0].net_worth;
 
-  const lineColor = isPositive ? c.positive : c.negative;
-
   return (
     <div
       style={{
-        background: c.card,
-        border: `0.5px solid ${c.border}`,
-        borderRadius: theme.layout.cardRadius,
-        padding: "14px 16px",
+        background: theme.colors.card,
+        borderRadius: theme.layout.radius,
+        border: `1px solid ${theme.colors.border}`,
+        padding: "20px",
       }}
     >
       <div
         style={{
-          fontSize: "9px",
-          color: c.textMuted,
-          letterSpacing: "0.1em",
-          marginBottom: "12px",
+          color: theme.colors.textMuted,
+          fontSize: "13px",
+          marginBottom: "10px",
         }}
       >
         NET WORTH TREND
       </div>
 
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={data}>
+          {/* Grid */}
           <CartesianGrid
-            stroke={c.chart.grid}
+            stroke={theme.colors.chart.grid}
             strokeDasharray="3 3"
-            vertical={false}
           />
 
+          {/* X Axis */}
           <XAxis
             dataKey="date"
             tickFormatter={(value) => {
@@ -79,28 +77,28 @@ export default function NetWorthChart() {
                 year: "2-digit",
               });
             }}
-            tick={{ fill: c.chart.axis, fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
+            tick={{ fill: theme.colors.chart.axis, fontSize: 12 }}
           />
 
+          {/* Y Axis */}
           <YAxis
-            tickFormatter={(value) => `₹${(value / 100000).toFixed(1)}L`}
-            tick={{ fill: c.chart.axis, fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-            width={52}
+            tickFormatter={(value) =>
+              `₹${(value / 100000).toFixed(1)}L`
+            }
+            tick={{ fill: theme.colors.chart.axis, fontSize: 12 }}
           />
 
+          {/* Tooltip */}
           <Tooltip
             contentStyle={{
-              backgroundColor: c.card,
-              border: `0.5px solid ${c.border}`,
-              borderRadius: "6px",
-              fontSize: "11px",
-              color: c.textPrimary,
+              backgroundColor: theme.colors.card,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: "8px",
+              fontSize: "12px",
             }}
-            labelStyle={{ color: c.textMuted, marginBottom: "2px" }}
+            labelStyle={{
+              color: theme.colors.textMuted,
+            }}
             formatter={(value) => {
               const lakh = value / 100000;
               return [`₹${lakh.toFixed(2)}L`, "Net Worth"];
@@ -110,14 +108,27 @@ export default function NetWorthChart() {
             }
           />
 
+          {/* Area (subtle fill) */}
+          <Area
+            type="monotone"
+            dataKey="net_worth"
+            stroke="none"
+            fill={theme.colors.chart.area}
+          />
+
+          {/* Line */}
           <Line
             type="monotone"
             dataKey="net_worth"
-            stroke={lineColor}
-            strokeWidth={2}
-            dot={{ r: 2.5, fill: lineColor, strokeWidth: 0 }}
-            activeDot={{ r: 4, fill: lineColor, strokeWidth: 0 }}
-            connectNulls={true}
+            stroke={
+              isPositive
+                ? theme.colors.positive
+                : theme.colors.negative
+            }
+            strokeWidth={3}
+            dot={{ r: 3 }}
+            activeDot={{ r: 5 }}
+			connectNulls={true}
           />
         </LineChart>
       </ResponsiveContainer>
