@@ -5,6 +5,11 @@
 ### MacOS finder
 .DS_Store
 
+### VSCode
+.vscode
+
+
+
 ### Database
 *.db
 
