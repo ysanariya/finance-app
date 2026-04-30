@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
-from routers import assets, auth, liabilities, dashboard, income, fixed_expense
+from routers import assets, auth, liabilities, dashboard, income, fixed_expense, transaction
 from dotenv import load_dotenv
 
 
 load_dotenv()
 app = FastAPI()
 
+
+print("RUNNING MAIN FROM:", __file__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,5 +33,7 @@ app.include_router(assets.router)
 app.include_router(liabilities.router)
 app.include_router(income.router)
 app.include_router(fixed_expense.router)
+app.include_router(transaction.router)
 app.include_router(dashboard.router)
+
 

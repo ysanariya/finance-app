@@ -1,6 +1,13 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,node
 
+
+### MacOS finder
+.DS_Store
+
+### Database
+*.db
+
 ### Node ###
 # Logs
 logs
