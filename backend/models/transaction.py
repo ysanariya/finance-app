@@ -20,6 +20,22 @@ class BankTransaction(Base):
 
     is_deleted = Column(Boolean, default=False)
 
+    merchant = Column(String, nullable=True)
+    
+    transaction_type = Column(String, nullable=True)
+    # income / expense / transfer / investment
+    
+    category = Column(String, nullable=True)
+    
+    classification_source = Column(String, nullable=True)
+# rule / manual
+    
+    matched_rule_id = Column(
+        Integer,
+        ForeignKey("transaction_rules.id"),
+        nullable=True
+    )
+
     # 🔥 DB-level safety (even if app fails)
     __table_args__ = (
         UniqueConstraint(

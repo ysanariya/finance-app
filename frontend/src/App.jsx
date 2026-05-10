@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
+
 import NetWorthChart from "./NetWorthChart";
 import NetWorthCard from "./NetWorthCard";
 import Login from "./Login";
 import TopStatCards from "./TopStatCards";
 import AssetAllocation from "./AssetAllocation";
 import CashflowChart from "./CashflowChart";
+
+import Transactions from "./pages/Transactions";
+
 import "./index.css";
 
 const NAV_ITEMS = [
@@ -13,9 +17,14 @@ const NAV_ITEMS = [
   { label: "Liabilities" },
   { label: "Income" },
   { label: "Goals" },
+  { label: "Transactions" },
 ];
 
-function Sidebar({ onLogout }) {
+function Sidebar({
+  onLogout,
+  activeTab,
+  setActiveTab,
+}) {
   const [showLogout, setShowLogout] = useState(false);
 
   return (
@@ -28,7 +37,10 @@ function Sidebar({ onLogout }) {
         {NAV_ITEMS.map((item) => (
           <div
             key={item.label}
-            className={`nav-item ${item.label === "Overview" ? "active" : ""}`}
+            className={`nav-item ${
+              item.label === activeTab ? "active" : ""
+            }`}
+            onClick={() => setActiveTab(item.label)}
           >
             <span className="nav-dot" />
             {item.label}
@@ -44,6 +56,7 @@ function Sidebar({ onLogout }) {
         >
           Y
         </div>
+
         <span className="sb-username">Yash K.</span>
 
         {showLogout && (
@@ -64,18 +77,26 @@ function Sidebar({ onLogout }) {
   );
 }
 
-function BottomTabs({ onLogout }) {
+function BottomTabs({
+  onLogout,
+  activeTab,
+  setActiveTab,
+}) {
   return (
     <nav className="bottom-tabs">
       {NAV_ITEMS.slice(0, 4).map((item) => (
         <div
           key={item.label}
-          className={`bt-item ${item.label === "Overview" ? "active" : ""}`}
+          className={`bt-item ${
+            item.label === activeTab ? "active" : ""
+          }`}
+          onClick={() => setActiveTab(item.label)}
         >
           <div className="bt-dot" />
           {item.label}
         </div>
       ))}
+
       <div
         className="bt-item"
         onClick={onLogout}
@@ -90,18 +111,25 @@ function BottomTabs({ onLogout }) {
 
 function Dashboard() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-      {/* Hero net worth */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
+      {/* Hero */}
       <NetWorthCard />
 
-      {/* Stat strip */}
+      {/* Stats */}
       <TopStatCards />
 
-      {/* Charts row — 2 col on desktop, stacked on mobile */}
+      {/* Charts */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(280px, 1fr))",
           gap: "10px",
         }}
       >
@@ -109,7 +137,7 @@ function Dashboard() {
         <CashflowChart />
       </div>
 
-      {/* Allocation — full width */}
+      {/* Allocation */}
       <AssetAllocation />
     </div>
   );
@@ -118,9 +146,15 @@ function Dashboard() {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  const [activeTab, setActiveTab] =
+    useState("Overview");
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) setIsLoggedIn(true);
+
+    if (token) {
+      setIsLoggedIn(true);
+    }
   }, []);
 
   const handleLogout = () => {
@@ -129,18 +163,36 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
-    return <Login onLogin={() => setIsLoggedIn(true)} />;
+    return (
+      <Login
+        onLogin={() => setIsLoggedIn(true)}
+      />
+    );
   }
 
   return (
     <div className="app-layout">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar
+        onLogout={handleLogout}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
 
       <main className="main-content">
-        <Dashboard />
+        {activeTab === "Overview" && (
+          <Dashboard />
+        )}
+
+        {activeTab === "Transactions" && (
+  <Transactions />
+)}
       </main>
 
-      <BottomTabs onLogout={handleLogout} />
+      <BottomTabs
+        onLogout={handleLogout}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
     </div>
   );
 }

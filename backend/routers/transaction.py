@@ -1,13 +1,14 @@
 from fastapi import UploadFile, File, APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from database import get_db
 from models.user import User
 import models.transaction
 from routers.auth import get_current_user
 from services.parser import parse_hdfc_txt
+from services.classifier import classify_transaction
 
 router = APIRouter()
 
@@ -27,33 +28,49 @@ async def upload_transactions(
     inserted = 0
     duplicates = 0
 
-    # ✅ LOOP MUST BE INSIDE FUNCTION
     for tx in parsed_transactions:
+
         ref = tx.get("reference_number")
 
-        # 🔹 Case 1: reference number exists → use DB constraint
+        # 🔹 CASE 1 → reference number exists
         if ref:
+
             try:
+
+                classification = await classify_transaction(
+                    tx["description"],
+                    db
+                )
+
                 new_tx = models.transaction.BankTransaction(
                     user_id=user_id,
                     description=tx["description"],
                     amount=tx["amount"],
-                    category=tx["category"],
                     recorded_at=tx["recorded_at"],
-                    reference_number=ref
+                    reference_number=ref,
+
+                    merchant=classification["merchant"],
+                    transaction_type=classification["transaction_type"],
+                    category=classification["category"],
+                    classification_source=classification["classification_source"],
+                    matched_rule_id=classification["matched_rule_id"]
                 )
 
                 db.add(new_tx)
+
                 await db.flush()
 
                 inserted += 1
 
             except IntegrityError:
+
                 await db.rollback()
+
                 duplicates += 1
 
-        # 🔹 Case 2: fallback dedupe
+        # 🔹 CASE 2 → no reference number
         else:
+
             existing = await db.execute(
                 select(models.transaction.BankTransaction).where(
                     and_(
@@ -69,19 +86,29 @@ async def upload_transactions(
                 duplicates += 1
                 continue
 
+            classification = await classify_transaction(
+                tx["description"],
+                db
+            )
+
             new_tx = models.transaction.BankTransaction(
                 user_id=user_id,
                 description=tx["description"],
                 amount=tx["amount"],
-                category=tx["category"],
                 recorded_at=tx["recorded_at"],
-                reference_number=None
+                reference_number=None,
+
+                merchant=classification["merchant"],
+                transaction_type=classification["transaction_type"],
+                category=classification["category"],
+                classification_source=classification["classification_source"],
+                matched_rule_id=classification["matched_rule_id"]
             )
 
             db.add(new_tx)
+
             inserted += 1
 
-    # ✅ COMMIT AFTER LOOP
     await db.commit()
 
     return {
@@ -105,6 +132,35 @@ async def get_transactions(
         select(models.transaction.BankTransaction)
         .where(models.transaction.BankTransaction.user_id == user_id)
         .order_by(models.transaction.BankTransaction.recorded_at.desc())
+    )
+
+    transactions = result.scalars().all()
+
+    return {
+        "count": len(transactions),
+        "transactions": transactions
+    }
+
+
+@router.get("/transactions/unclassified")
+async def get_unclassified_transactions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+
+    user_id = current_user.id
+
+    result = await db.execute(
+        select(models.transaction.BankTransaction)
+        .where(
+            and_(
+                models.transaction.BankTransaction.user_id == user_id,
+                models.transaction.BankTransaction.category == None
+            )
+        )
+        .order_by(
+            models.transaction.BankTransaction.recorded_at.desc()
+        )
     )
 
     transactions = result.scalars().all()
