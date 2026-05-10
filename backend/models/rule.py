@@ -15,7 +15,7 @@ class TransactionRule(Base):
 
     merchant = Column(String, nullable=True)
 
-    transaction_type = Column(String, nullable=False)
+    transaction_type = Column(String, nullable=True)
     # income | expense | transfer | investment
 
     category = Column(String, nullable=True)

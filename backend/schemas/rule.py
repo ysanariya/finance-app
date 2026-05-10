@@ -6,7 +6,7 @@ class RuleCreate(BaseModel):
     pattern: str
     match_type: str
     merchant: Optional[str] = None
-    transaction_type: str
+    transaction_type: Optional [str] = None
     category: Optional[str] = None
     priority: int = 0
 

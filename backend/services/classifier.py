@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from schemas import rule
 from models.rule import TransactionRule
 
 
@@ -10,6 +10,7 @@ def normalize_text(text: str):
 
 async def classify_transaction(
     narration: str,
+    amount: float,
     db: AsyncSession
 ):
     normalized = normalize_text(narration)
@@ -35,18 +36,58 @@ async def classify_transaction(
             matched = pattern in normalized
 
         if matched:
+            # infer from amount first
+
+            if amount > 0:
+                inferred_type = "income"
+            else:
+                inferred_type = "expense"
+
+            # optional override from rule
+
+            final_type = (
+                rule.transaction_type
+                if rule.transaction_type
+                else inferred_type
+            )
+
             return {
-                "merchant": rule.merchant,
-                "transaction_type": rule.transaction_type,
-                "category": rule.category,
-                "classification_source": "rule",
-                "matched_rule_id": rule.id
+
+                "merchant":
+                    rule.merchant,
+
+                "category":
+                    rule.category,
+
+                "transaction_type":
+                    final_type,
+
+                "classification_source":
+                    "rule",
+
+                "matched_rule_id":
+                    rule.id,
             }
 
-    return {
-        "merchant": None,
-        "transaction_type": None,
-        "category": None,
-        "classification_source": None,
-        "matched_rule_id": None
-    }
+        if amount > 0:
+            inferred_type = "income"
+        else:
+            inferred_type = "expense"
+
+        return {
+
+            "merchant":
+                None,
+
+            "category":
+                None,
+
+            "transaction_type":
+                inferred_type,
+
+            "classification_source":
+                "unclassified",
+
+            "matched_rule_id":
+                None,
+        }

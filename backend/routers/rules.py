@@ -39,7 +39,7 @@ async def create_rule(
             detail="Invalid match_type"
         )
 
-    if rule.transaction_type not in VALID_TRANSACTION_TYPES:
+    if rule.transaction_type not in VALID_TRANSACTION_TYPES and rule.transaction_type is not None:
         raise HTTPException(
             status_code=400,
             detail="Invalid transaction_type"
@@ -132,7 +132,7 @@ async def update_rule(
             )
 
     if "transaction_type" in update_data:
-        if update_data["transaction_type"] not in VALID_TRANSACTION_TYPES:
+        if update_data["transaction_type"] not in VALID_TRANSACTION_TYPES and update_data["transaction_type"] is not None:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid transaction_type"
@@ -156,11 +156,15 @@ async def reclassify_transactions(
     user_id = current_user.id
 
     # Get all active rules
+
     rules_result = await db.execute(
+
         select(TransactionRule)
+
         .where(
             TransactionRule.is_active == True
         )
+
         .order_by(
             TransactionRule.priority.desc()
         )
@@ -169,8 +173,11 @@ async def reclassify_transactions(
     rules = rules_result.scalars().all()
 
     # Get all user transactions
+
     tx_result = await db.execute(
+
         select(BankTransaction)
+
         .where(
             BankTransaction.user_id == user_id
         )
@@ -182,11 +189,39 @@ async def reclassify_transactions(
 
     for tx in transactions:
 
-        description = tx.description.lower()
+        description = (
+            tx.description.lower()
+        )
+
+        # Default type from amount polarity
+
+        if tx.amount > 0:
+
+            tx.transaction_type = "income"
+
+        else:
+
+            tx.transaction_type = "expense"
+
+        # Reset metadata
+
+        tx.category = None
+
+        tx.merchant = None
+
+        tx.classification_source = (
+            "unclassified"
+        )
+
+        tx.matched_rule_id = None
+
+        # Apply rules
 
         for rule in rules:
 
-            pattern = rule.pattern.lower()
+            pattern = (
+                rule.pattern.lower()
+            )
 
             matched = False
 
@@ -195,23 +230,45 @@ async def reclassify_transactions(
                 == "contains"
             ):
 
-                matched = pattern in description
+                matched = (
+                    pattern in description
+                )
 
             elif (
                 rule.match_type
                 == "exact"
             ):
 
-                matched = pattern == description
+                matched = (
+                    pattern == description
+                )
 
             if matched:
 
-                tx.category = rule.category
+                tx.category = (
+                    rule.category
+                )
 
-                tx.merchant = rule.merchant
+                tx.merchant = (
+                    rule.merchant
+                )
 
-                tx.transaction_type = (
+                # Optional override only
+
+                if (
                     rule.transaction_type
+                ):
+
+                    tx.transaction_type = (
+                        rule.transaction_type
+                    )
+
+                tx.classification_source = (
+                    "rule"
+                )
+
+                tx.matched_rule_id = (
+                    rule.id
                 )
 
                 updated_count += 1
@@ -221,6 +278,7 @@ async def reclassify_transactions(
     await db.commit()
 
     return {
+
         "message":
             "Reclassification complete",
 
