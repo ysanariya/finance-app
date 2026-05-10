@@ -22,6 +22,7 @@ const NAV_ITEMS = [
 
 function Sidebar({
   onLogout,
+  currentUser,
   activeTab,
   setActiveTab,
 }) {
@@ -54,10 +55,10 @@ function Sidebar({
           onClick={() => setShowLogout((v) => !v)}
           title="Account"
         >
-          Y
+          {currentUser?.name?.[0] || "U"}
         </div>
 
-        <span className="sb-username">Yash K.</span>
+        <span className="sb-username">{currentUser?.name || "User"}</span>
 
         {showLogout && (
           <div className="logout-dropdown">
@@ -144,48 +145,113 @@ function Dashboard() {
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const [isLoggedIn, setIsLoggedIn] =
+    useState(false);
 
   const [activeTab, setActiveTab] =
     useState("Overview");
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+  const [currentUser, setCurrentUser] =
+    useState(null);
 
-    if (token) {
-      setIsLoggedIn(true);
+  useEffect(() => {
+
+    async function loadUser() {
+
+      const token =
+        localStorage.getItem("token");
+
+      if (!token) {
+        return;
+      }
+
+      try {
+
+        const response = await fetch(
+          "http://localhost:8000/me",
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+
+          localStorage.removeItem(
+            "token"
+          );
+
+          return;
+        }
+
+        const data =
+          await response.json();
+
+        setCurrentUser(data);
+
+        setIsLoggedIn(true);
+
+      } catch (err) {
+
+        console.error(
+          "Failed to load user",
+          err
+        );
+      }
     }
+
+    loadUser();
+
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  function handleLogout() {
+
+    localStorage.removeItem(
+      "token"
+    );
+
+    setCurrentUser(null);
+
     setIsLoggedIn(false);
-  };
+
+    setActiveTab("Overview");
+  }
 
   if (!isLoggedIn) {
+
     return (
       <Login
-        onLogin={() => setIsLoggedIn(true)}
+        onLogin={() => {
+          window.location.reload();
+        }}
       />
     );
   }
 
   return (
+
     <div className="app-layout">
+
       <Sidebar
         onLogout={handleLogout}
+        currentUser={currentUser}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
 
       <main className="main-content">
+
         {activeTab === "Overview" && (
           <Dashboard />
         )}
 
         {activeTab === "Transactions" && (
-  <Transactions />
-)}
+          <Transactions />
+        )}
+
       </main>
 
       <BottomTabs
@@ -193,6 +259,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
+
     </div>
   );
 }

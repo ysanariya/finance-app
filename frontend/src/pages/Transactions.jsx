@@ -23,21 +23,35 @@ export default function Transactions() {
   const [ruleForm, setRuleForm] =
     useState(null);
 
+  const [page, setPage] =
+    useState(1);
+
+  const [total, setTotal] =
+    useState(0);
+
+  const limit = 50;
+
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [page]);
 
   async function fetchTransactions() {
 
     try {
 
+      setLoading(true);
+
       const data =
         await fetchWithAuth(
-          "http://127.0.0.1:8000/transactions"
+          `http://127.0.0.1:8000/transactions?page=${page}&limit=${limit}`
         );
 
       setTransactions(
         data.transactions || []
+      );
+
+      setTotal(
+        data.total || 0
       );
 
     } catch (err) {
@@ -47,7 +61,6 @@ export default function Transactions() {
     } finally {
 
       setLoading(false);
-
     }
   }
 
@@ -150,10 +163,7 @@ export default function Transactions() {
       category:
         "",
 
-      transaction_type:
-        tx.amount > 0
-          ? "income"
-          : "expense",
+      transaction_type: "",
 
       priority:
         50,
@@ -183,9 +193,18 @@ export default function Transactions() {
                 `Bearer ${token}`,
             },
 
-            body: JSON.stringify(
-              ruleForm
-            ),
+            body: JSON.stringify({
+
+              ...ruleForm,
+
+              transaction_type:
+
+                ruleForm.transaction_type === ""
+
+                  ? null
+
+                  : ruleForm.transaction_type,
+            }),
           }
         );
 
@@ -202,9 +221,25 @@ export default function Transactions() {
         return;
       }
 
-      alert("Rule created");
+      await fetch(
+        "http://127.0.0.1:8000/rules/reclassify",
+        {
+          method: "POST",
+
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
 
       setShowRuleModal(false);
+
+      fetchTransactions();
+
+      alert(
+        "Rule created and transactions reclassified"
+      );
 
     } catch (err) {
 
@@ -372,7 +407,7 @@ export default function Transactions() {
             display: "grid",
 
             gridTemplateColumns:
-              "120px 2fr 140px 160px 120px 120px",
+              "120px 2fr 140px 160px 120px 140px",
 
             padding: "16px 20px",
 
@@ -404,7 +439,7 @@ export default function Transactions() {
 
         </div>
 
-        {/* TABLE BODY */}
+        {/* BODY */}
 
         {loading ? (
 
@@ -432,9 +467,9 @@ export default function Transactions() {
                   display: "grid",
 
                   gridTemplateColumns:
-                    "120px 1fr 140px 160px 120px 120px",
+                    "120px 2fr 140px 160px 120px 140px",
 
-                  padding: "18px 20px",
+                  padding: "16px 20px",
 
                   borderBottom:
                     `1px solid ${theme.colors.border}`,
@@ -448,8 +483,6 @@ export default function Transactions() {
                 }}
               >
 
-                {/* DATE */}
-
                 <div
                   style={{
                     color:
@@ -461,13 +494,11 @@ export default function Transactions() {
                   ).toLocaleDateString()}
                 </div>
 
-                {/* DESCRIPTION */}
-
                 <div
                   style={{
-                    paddingRight: "16px",
-                    lineHeight: 1.4,
                     fontSize: "13px",
+                    lineHeight: 1.4,
+                    paddingRight: "18px",
                     wordBreak:
                       "break-word",
                   }}
@@ -475,13 +506,9 @@ export default function Transactions() {
                   {tx.description}
                 </div>
 
-                {/* MERCHANT */}
-
                 <div>
                   {tx.merchant || "-"}
                 </div>
-
-                {/* CATEGORY */}
 
                 <div
                   style={{
@@ -578,8 +605,6 @@ export default function Transactions() {
 
                 </div>
 
-                {/* TYPE */}
-
                 <div
                   style={{
                     color:
@@ -602,8 +627,6 @@ export default function Transactions() {
                   {tx.transaction_type || "-"}
                 </div>
 
-                {/* AMOUNT */}
-
                 <div
                   style={{
                     textAlign:
@@ -624,7 +647,13 @@ export default function Transactions() {
                   ₹
                   {Math.abs(
                     tx.amount
-                  ).toLocaleString()}
+                  ).toLocaleString(
+                    "en-IN",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  )}
                 </div>
 
               </div>
@@ -632,6 +661,80 @@ export default function Transactions() {
           })
 
         )}
+
+      </div>
+
+      {/* PAGINATION */}
+
+      <div
+        style={{
+          display: "flex",
+
+          justifyContent:
+            "space-between",
+
+          alignItems: "center",
+
+          marginTop: "18px",
+        }}
+      >
+
+        <div
+          style={{
+            color:
+              theme.colors.textSecondary,
+
+            fontSize: "13px",
+          }}
+        >
+          Showing{" "}
+
+          {(page - 1) * limit + 1}
+
+          -
+
+          {Math.min(
+            page * limit,
+            total
+          )}
+
+          {" "}of {total}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+          }}
+        >
+
+          <button
+            disabled={page === 1}
+
+            onClick={() =>
+              setPage(page - 1)
+            }
+
+            style={paginationBtn}
+          >
+            Previous
+          </button>
+
+          <button
+            disabled={
+              page * limit >= total
+            }
+
+            onClick={() =>
+              setPage(page + 1)
+            }
+
+            style={paginationBtn}
+          >
+            Next
+          </button>
+
+        </div>
 
       </div>
 
@@ -755,6 +858,7 @@ export default function Transactions() {
                 onChange={(e) =>
                   setRuleForm({
                     ...ruleForm,
+
                     transaction_type:
                       e.target.value,
                   })
@@ -762,6 +866,11 @@ export default function Transactions() {
 
                 style={inputStyle}
               >
+
+                <option value="">
+                  Infer from bank statement
+                </option>
+
                 <option value="expense">
                   Expense
                 </option>
@@ -773,6 +882,7 @@ export default function Transactions() {
                 <option value="transfer">
                   Transfer
                 </option>
+
               </select>
 
               <input
@@ -878,4 +988,25 @@ const inputStyle = {
   fontSize: "14px",
 
   outline: "none",
+};
+
+const paginationBtn = {
+
+  background:
+    "#181610",
+
+  border:
+    "1px solid rgba(255,255,255,0.08)",
+
+  color:
+    "#EDE8DF",
+
+  padding:
+    "10px 14px",
+
+  borderRadius:
+    "10px",
+
+  cursor:
+    "pointer",
 };
