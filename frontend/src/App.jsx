@@ -8,7 +8,7 @@ import AssetAllocation from "./AssetAllocation";
 import CashflowChart from "./CashflowChart";
 
 import Transactions from "./pages/Transactions";
-import Expenses from "./pages/Expenses";
+import Cashflow from "./pages/CashFlow";
 import Rules from "./pages/Rules";
 
 import { theme } from "./theme";
@@ -19,8 +19,7 @@ const NAV_ITEMS = [
   { label: "Overview" },
   { label: "Assets" },
   { label: "Liabilities" },
-  { label: "Income" },
-  { label: "Expenses" },
+  { label: "Cash Flow" },
   { label: "Goals" },
   { label: "Transactions" },
   { label: "Rules" },
@@ -489,8 +488,8 @@ export default function App() {
           <Transactions />
         )}
 
-        {activeTab === "Expenses" && (
-          <Expenses />
+        {activeTab === "Cash Flow" && (
+          <Cashflow />
         )}
 
         {activeTab === "Rules" && (

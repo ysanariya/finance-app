@@ -251,7 +251,8 @@ async def category_breakdown(
         )
 
         .where(
-            BankTransaction.amount < 0
+            BankTransaction.amount < 0,
+            BankTransaction.transaction_type != "investment"
         )
 
         .where(
@@ -642,4 +643,73 @@ async def spending_health(
 
             "savings": 20,
         }
+    }
+
+
+#################################
+######## MONTHLY INCOME #########
+#################################
+
+@router.get("/dashboard/monthly-income-trend")
+async def monthly_income_trend(
+
+    current_user: User = Depends(get_current_user),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    result = await db.execute(
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.transaction_type == "income"
+        )
+
+        .where(
+            BankTransaction.is_deleted == False
+        )
+    )
+
+    transactions = result.scalars().all()
+
+    monthly = {}
+
+    for tx in transactions:
+
+        month = tx.recorded_at.strftime(
+            "%Y-%m"
+        )
+
+        if month not in monthly:
+            monthly[month] = 0
+
+        monthly[month] += abs(
+            tx.amount or 0
+        )
+
+    trend = []
+
+    for month in sorted(
+        monthly.keys()
+    ):
+
+        trend.append({
+
+            "month": month,
+
+            "amount":
+                round(
+                    monthly[month],
+                    2
+                )
+        })
+
+    return {
+        "trend": trend
     }

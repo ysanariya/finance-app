@@ -171,7 +171,9 @@ export const theme = {
       grid:        "rgba(59,158,255,0.08)",
       primary:     "#00C896",
       secondary:   "#E8445A",
+      surplus:     "#7C9CFF",
       tertiary:    "#3B9EFF",
+      dotties:     "#ffffff",
       axis:        "#3D4A63",
       area:        "rgba(0,200,150,0.06)",
       pie: [
