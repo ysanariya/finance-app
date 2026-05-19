@@ -529,6 +529,7 @@ export default function Rules() {
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
                 <option value="transfer">Transfer</option>
+                <option value="investment">Investment</option>
               </select>
 
               <input

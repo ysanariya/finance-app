@@ -391,6 +391,7 @@ export default function Transactions() {
           <option value="income">Income</option>
           <option value="expense">Expense</option>
           <option value="transfer">Transfer</option>
+          <option value="investment">Investment</option>
         </select>
 
         <select
@@ -804,6 +805,7 @@ export default function Transactions() {
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
                 <option value="transfer">Transfer</option>
+                <option value="investment">Investment</option>
               </select>
 
               <input

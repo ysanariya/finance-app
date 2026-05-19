@@ -359,11 +359,11 @@ async def monthly_cashflow(
 
         amount = tx.amount or 0
 
-        if amount > 0:
+        if amount > 0 and tx.transaction_type == "income":
 
             monthly[month]["income"] += amount
 
-        elif amount < 0:
+        elif amount < 0 and tx.transaction_type == "expense":
 
             monthly[month]["expenses"] += abs(
                 amount
@@ -406,6 +406,11 @@ async def monthly_cashflow(
 
         "surplus":
             round(avg_surplus, 2),
+        
+        "total_income":
+            round(total_income, 2),
+        "total_expenses":
+            round(total_expenses, 2),
     }
 
 
@@ -431,7 +436,7 @@ async def monthly_expense_trend(
         )
 
         .where(
-            BankTransaction.amount < 0
+            BankTransaction.transaction_type == "expense"
         )
 
         .where(
@@ -499,7 +504,12 @@ async def top_merchants(
         )
 
         .where(
-            BankTransaction.transaction_type == "expense"
+            BankTransaction.amount < 0,
+            BankTransaction.transaction_type.in_([
+                "expense",
+                "loan repayment",
+                "infer"
+            ])
         )
 
         .where(
@@ -587,11 +597,11 @@ async def spending_health(
 
         amount = tx.amount or 0
 
-        if amount > 0:
+        if amount > 0 and tx.transaction_type == "income" or amount > 0 and tx.transaction_type == "investment":
 
             total_income += amount
 
-        elif amount < 0:
+        elif amount < 0 and tx.transaction_type == "expense":
 
             total_expenses += abs(
                 amount
