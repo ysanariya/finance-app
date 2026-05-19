@@ -38,6 +38,7 @@ export default function Cashflow() {
   const [monthlyIncomeTrend, setMonthlyIncomeTrend] = useState([]);
   const [categories, setCategories]     = useState([]);
   const [merchants, setMerchants]       = useState([]);
+  const [incomeByCategory, setIncomeByCategory] = useState([]);
   const [loading, setLoading]           = useState(true);
 
   async function loadData() {
@@ -46,13 +47,14 @@ export default function Cashflow() {
 
       setLoading(true);
 
-      const [summaryRes, ExpenseTrendRes, IncomeTrendRes, categoryRes, merchantRes] =
+      const [summaryRes, ExpenseTrendRes, IncomeTrendRes, categoryRes, merchantRes, incomeByCategoryRes] =
         await Promise.all([
           fetchWithAuth("http://localhost:8000/dashboard/monthly-cashflow"),
           fetchWithAuth("http://localhost:8000/dashboard/monthly-expense-trend"),
           fetchWithAuth("http://localhost:8000/dashboard/monthly-income-trend"),
           fetchWithAuth("http://localhost:8000/dashboard/category-breakdown"),
           fetchWithAuth("http://localhost:8000/dashboard/top-merchants"),
+          fetchWithAuth("http://localhost:8000/dashboard/top-income"),
         ]);
 
       setSummary({
@@ -71,6 +73,30 @@ export default function Cashflow() {
 
       const merchantData      = merchantRes?.merchants || [];
       const totalMerchantSpend = merchantData.reduce((sum, m) => sum + (m.amount || 0), 0);
+
+      const incomeCategoryData = incomeByCategoryRes?.merchants || [];
+      const totalIncome = incomeCategoryData.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+      console.log("Total Income:", totalIncome);
+      console.log("Income by Category:", incomeCategoryData);
+      
+    const incomeWithPercentages =
+      incomeCategoryData.map((c) => ({
+        ...c,
+        percentage:
+          totalIncome > 0
+            ? ((c.amount / totalIncome) * 100).toFixed(1)
+            : 0,
+      }));
+
+    console.log(
+      "Income with Percentages:",
+      incomeWithPercentages
+    );
+
+    setIncomeByCategory(
+      incomeWithPercentages
+    );
 
       setMerchants(
         merchantData.map((m) => ({
@@ -404,115 +430,228 @@ export default function Cashflow() {
 
       </div>
 
-      {/* TOP MERCHANTS TABLE */}
+      <div
+        style={{
+          display:             "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap:                 "16px",
+          marginBottom:        "16px",
+        }}
+      >
 
-      <div style={card}>
 
-        <div style={cardLabel}>Top Merchants</div>
+          {/* TOP MERCHANTS TABLE */}
+          <div style={card}>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div style={cardLabel}>Top Merchants</div>
 
-            <thead
-              style={{
-                background:   theme.table.headerBackground,
-                borderBottom: `1px solid ${theme.colors.border}`,
-              }}
-            >
-              <tr>
-                {["Rank", "Merchant", "Amount", "Share"].map((h, i) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign:     i >= 2 ? "right" : "left",
-                      padding:       `${theme.table.headerPaddingV} ${theme.table.headerPaddingH}`,
-                      fontFamily:    theme.table.headerFontFamily,
-                      fontSize:      theme.table.headerFontSize,
-                      fontWeight:    theme.table.headerFontWeight,
-                      letterSpacing: theme.table.headerLetterSpacing,
-                      textTransform: theme.table.headerTextTransform,
-                      color:         theme.table.headerColor,
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
 
-            <tbody>
-              {merchants.map((m, index) => (
-                <tr
-                  key={m.merchant}
-                  style={{ borderBottom: `1px solid ${theme.colors.border}` }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = theme.table.rowHover;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
+                <thead
+                  style={{
+                    background:   theme.table.headerBackground,
+                    borderBottom: `1px solid ${theme.colors.border}`,
                   }}
                 >
+                  <tr>
+                    {["Rank", "Merchant", "Amount", "Share"].map((h, i) => (
+                      <th
+                        key={h}
+                        style={{
+                          textAlign:     i >= 2 ? "right" : "left",
+                          padding:       `${theme.table.headerPaddingV} ${theme.table.headerPaddingH}`,
+                          fontFamily:    theme.table.headerFontFamily,
+                          fontSize:      theme.table.headerFontSize,
+                          fontWeight:    theme.table.headerFontWeight,
+                          letterSpacing: theme.table.headerLetterSpacing,
+                          textTransform: theme.table.headerTextTransform,
+                          color:         theme.table.headerColor,
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-                  {/* Rank */}
-                  <td
-                    style={{
-                      ...cellStyle,
-                      fontFamily: theme.table.dateFontFamily,
-                      color:      theme.colors.textMuted,
-                    }}
-                  >
-                    #{index + 1}
-                  </td>
+                <tbody>
+                  {merchants.map((m, index) => (
+                    <tr
+                      key={m.merchant}
+                      style={{ borderBottom: `1px solid ${theme.colors.border}` }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme.table.rowHover;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
 
-                  {/* Merchant */}
-                  <td
-                    style={{
-                      ...cellStyle,
-                      fontWeight: theme.table.merchantFontWeight,
-                      color:      theme.table.merchantColor,
-                    }}
-                  >
-                    {m.merchant}
-                  </td>
+                      {/* Rank */}
+                      <td
+                        style={{
+                          ...cellStyle,
+                          fontFamily: theme.table.dateFontFamily,
+                          color:      theme.colors.textMuted,
+                        }}
+                      >
+                        #{index + 1}
+                      </td>
 
-                  {/* Amount */}
-                  <td
-                    style={{
-                      ...cellStyle,
-                      textAlign:  "right",
-                      fontFamily: theme.table.amountFontFamily,
-                      fontWeight: theme.table.amountFontWeight,
-                      fontSize:   theme.table.amountFontSize,
-                      color:      theme.table.amountColorExpense,
-                    }}
-                  >
-                    {formatINR(m.amount)}
-                  </td>
+                      {/* Merchant */}
+                      <td
+                        style={{
+                          ...cellStyle,
+                          fontWeight: theme.table.merchantFontWeight,
+                          color:      theme.table.merchantColor,
+                        }}
+                      >
+                        {m.merchant}
+                      </td>
 
-                  {/* Share */}
-                  <td
-                    style={{
-                      ...cellStyle,
-                      textAlign:  "right",
-                      fontFamily: theme.table.dateFontFamily,
-                      color:      theme.colors.textSecondary,
-                    }}
-                  >
-                    {m.percentage}%
-                  </td>
+                      {/* Amount */}
+                      <td
+                        style={{
+                          ...cellStyle,
+                          textAlign:  "right",
+                          fontFamily: theme.table.amountFontFamily,
+                          fontWeight: theme.table.amountFontWeight,
+                          fontSize:   theme.table.amountFontSize,
+                          color:      theme.table.amountColorExpense,
+                        }}
+                      >
+                        {formatINR(m.amount)}
+                      </td>
 
-                </tr>
-              ))}
-            </tbody>
+                      {/* Share */}
+                      <td
+                        style={{
+                          ...cellStyle,
+                          textAlign:  "right",
+                          fontFamily: theme.table.dateFontFamily,
+                          color:      theme.colors.textSecondary,
+                        }}
+                      >
+                        {m.percentage}%
+                      </td>
 
-          </table>
-        </div>
+                    </tr>
+                  ))}
+                </tbody>
 
-      </div>
+              </table>
+            </div>
+            </div>
 
-    </div>
-  );
+
+            {/* TOP INCOME TABLE */}
+                  <div style = {card}>
+                  <div style={cardLabel}>Top Income Sources</div>
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+
+                      <thead
+                        style={{
+                          background:   theme.table.headerBackground,
+                          borderBottom: `1px solid ${theme.colors.border}`,
+                        }}
+                      >
+                        <tr>
+                          {["Rank", "Source", "Amount", "Share"].map((h, i) => (
+                            <th
+                              key={h}
+                              style={{
+                                textAlign:     i >= 2 ? "right" : "left",
+                                padding:       `${theme.table.headerPaddingV} ${theme.table.headerPaddingH}`,
+                                fontFamily:    theme.table.headerFontFamily,
+                                fontSize:      theme.table.headerFontSize,
+                                fontWeight:    theme.table.headerFontWeight,
+                                letterSpacing: theme.table.headerLetterSpacing,
+                                textTransform: theme.table.headerTextTransform,
+                                color:         theme.table.headerColor,
+                              }}
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {incomeByCategory.map((c, index) => (
+                          <tr
+                            key={c.merchant}
+                            style={{ borderBottom: `1px solid ${theme.colors.border}` }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = theme.table.rowHover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "transparent";
+                            }}
+                          >
+
+                            {/* Rank */}
+                            <td
+                              style={{
+                                ...cellStyle,
+                                fontFamily: theme.table.dateFontFamily,
+                                color:      theme.colors.textMuted,
+                              }}
+                            >
+                              #{index + 1}
+                            </td>
+
+                            {/* Category */}
+                            <td
+                              style={{
+                                ...cellStyle,
+                                fontWeight: theme.table.merchantFontWeight,
+                                color:      theme.table.merchantColor,
+                              }}
+                            >
+                              {c.merchant}
+                            </td>
+
+                            {/* Amount */}
+                            <td
+                              style={{
+                                ...cellStyle,
+                                textAlign:  "right",
+                                fontFamily: theme.table.amountFontFamily,
+                                fontWeight: theme.table.amountFontWeight,
+                                fontSize:   theme.table.amountFontSize,
+                                color:      theme.table.amountColorIncome,
+                              }}
+                            >
+                              {formatINR(c.amount)}
+                            </td>
+
+                            {/* Share */}
+                            <td
+                              style={{
+                                ...cellStyle,
+                                textAlign:  "right",
+                                fontFamily: theme.table.dateFontFamily,
+                                color:      theme.colors.textSecondary,
+                              }}
+                            >
+                              {c.percentage}%
+                            </td>
+
+                          </tr>
+                        ))}
+                      </tbody>
+
+                    </table>
+                  </div>
+                </div>
+                </div>
+            </div>
+);
 }
+
 
 // ── Shared style constants ────────────────────────────────────────────────────
 

@@ -252,7 +252,11 @@ async def category_breakdown(
 
         .where(
             BankTransaction.amount < 0,
-            BankTransaction.transaction_type != "investment"
+            BankTransaction.transaction_type.in_([
+                "expense",
+                "loan repayment",
+                "infer"
+            ])
         )
 
         .where(
@@ -266,10 +270,10 @@ async def category_breakdown(
 
     for tx in transactions:
 
-        category = (
-            tx.category
-            or "Uncategorized"
-        )
+        category = tx.category
+
+        if not category or category.lower() == "uncategorized":
+            continue
 
         if category not in category_map:
             category_map[category] = 0
@@ -712,4 +716,81 @@ async def monthly_income_trend(
 
     return {
         "trend": trend
+    }
+
+#####################################
+######## TOP INCOME SOURCE ##########
+#####################################
+
+@router.get("/dashboard/top-income")
+async def top_income(
+
+    current_user: User = Depends(get_current_user),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    result = await db.execute(
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id == current_user.id
+        )
+
+        .where(
+            BankTransaction.amount > 0,
+            BankTransaction.transaction_type.in_([
+                "income",
+                "infer"
+            ])
+        )
+
+        .where(
+            BankTransaction.is_deleted == False
+        )
+    )
+
+    transactions = result.scalars().all()
+
+    merchant_map = {}
+
+    for tx in transactions:
+        if (
+            not tx.merchant
+            or tx.merchant.strip() == ""
+            or tx.merchant == "-"
+        ):
+            continue
+        merchant = tx.merchant
+
+        if merchant not in merchant_map:
+            merchant_map[merchant] = 0
+
+        merchant_map[merchant] += abs(
+            tx.amount or 0
+        )
+
+    top = sorted(
+
+        merchant_map.items(),
+
+        key=lambda x: x[1],
+
+        reverse=True
+    )[:5]
+
+    return {
+
+        "merchants": [
+
+            {
+                "merchant": k,
+
+                "amount":
+                    round(v, 2)
+            }
+
+            for k, v in top
+        ]
     }
