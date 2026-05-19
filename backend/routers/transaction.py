@@ -14,6 +14,10 @@ from services.classifier import classify_transaction
 router = APIRouter()
 
 
+#######################################
+####### UPLOAD ENDPOINT ###############
+#######################################
+
 @router.post("/transactions/upload")
 async def upload_transactions(
     file: UploadFile = File(...),
@@ -28,6 +32,8 @@ async def upload_transactions(
 
     inserted = 0
     duplicates = 0
+    failed = []
+    duplicate_transactions = []
 
     for tx in parsed_transactions:
         try:
@@ -57,6 +63,11 @@ async def upload_transactions(
             if existing.scalar():
 
                 duplicates += 1
+                duplicate_transactions.append({
+                    "description": tx["description"],
+                    "amount": tx["amount"],
+                    "recorded_at": str(tx["recorded_at"])
+                })
                 continue
 
             classification = await classify_transaction(
@@ -104,6 +115,21 @@ async def upload_transactions(
 
             await db.rollback()
 
+            failed.append({
+
+                "description":
+                    tx.get("description"),
+
+                "amount":
+                    tx.get("amount"),
+
+                "recorded_at":
+                    str(tx.get("recorded_at")),
+
+                "error":
+                    str(e)
+            })
+
             print("FAILED TX:", tx)
 
             print("ERROR:", str(e))
@@ -115,19 +141,85 @@ async def upload_transactions(
         "inserted": inserted,
         "duplicates": duplicates,
         "skipped": result["skipped"],
-        "sample_errors": result["errors"]
+        "sample_errors": result["errors"],
+        "failed_inserts": failed[:10],
+        "failed_insert_count": len(failed),
+        "sample_duplicates": duplicate_transactions[:10]
     }
 
+
+###############################################
+####### GET TRANSACTIONS WITH FILTERS #########
+###############################################
 
 @router.get("/transactions")
 async def get_transactions(
     page: int = 1,
     limit: int = 50,
+    month: str | None = None,
+    category: str | None = None,
+    merchant: str | None = None,
+    transaction_type: str | None = None,
+    direction: str | None = None,
+    search: str | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
 
     user_id = current_user.id
+
+    filters = [models.transaction.BankTransaction.user_id == user_id]
+
+    if month:
+        filters.append(
+            func.strftime(
+                "%Y-%m", models.transaction.BankTransaction.recorded_at
+            ) == month
+        )
+
+    if category:
+        filters.append(
+            models.transaction.BankTransaction.category == category
+        )
+
+    if merchant:
+        filters.append(
+            models.transaction.BankTransaction.merchant == merchant
+        )
+    
+    if transaction_type:
+        filters.append(
+            models.transaction.BankTransaction.transaction_type == transaction_type
+        )
+
+    if direction == "credit":
+
+        filters.append(
+            models.transaction.BankTransaction.amount > 0
+        )
+
+    elif direction == "debit":
+
+        filters.append(
+            models.transaction.BankTransaction.amount < 0
+        )
+
+    elif direction == "zero":
+
+        filters.append(
+            models.transaction.BankTransaction.amount == 0
+        )
+
+    if search:
+
+        filters.append(
+
+            models.transaction.BankTransaction.description.ilike(
+                f"%{search}%"
+            )
+        )
+
+
 
     offset = (page - 1) * limit
 
@@ -136,10 +228,7 @@ async def get_transactions(
         .select_from(
             models.transaction.BankTransaction
         )
-        .where(
-            models.transaction.BankTransaction.user_id
-            == user_id
-        )
+        .where(and_(*filters))
     )
 
     total_count = count_result.scalar()
@@ -150,10 +239,7 @@ async def get_transactions(
             models.transaction.BankTransaction
         )
 
-        .where(
-            models.transaction.BankTransaction.user_id
-            == user_id
-        )
+        .where(and_(*filters))
 
         .order_by(
             models.transaction.BankTransaction.recorded_at.desc()

@@ -1,85 +1,89 @@
 from fastapi import APIRouter, Depends, Query
-from fastapi import FastAPI, Depends, HTTPException, Query
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import engine, Base, get_db
-from models.user import User
-from datetime import datetime, time, timezone, timedelta
-from models.asset import Asset
-from models.liability import Liability
-from schemas.liability import LiabilityCreate
-from schemas.asset import AssetCreate
-from schemas.user import UserCreate, UserLogin
-from sqlalchemy import select, func, and_
-from sqlalchemy.orm import aliased
-from fastapi.middleware.cors import CORSMiddleware
+
+from sqlalchemy import select, func
+
+from database import get_db
+
 from routers.auth import get_current_user
+
 from routers.assets import get_assets
 from routers.liabilities import get_liability
-from models.income import Income
-from models.fixed_expense import FixedExpense
 
+from models.user import User
 
+from models.asset import Asset
+from models.liability import Liability
+from models.transaction import BankTransaction
 
-def get_month_range(year: int, month: int):
-    start = datetime(year, month, 1, tzinfo=timezone.utc)
-
-    if month == 12:
-        end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        end = datetime(year, month + 1, 1, tzinfo=timezone.utc)
-
-    return start, end
-
-
-def next_month(year: int, month: int):
-    if month == 12:
-        return year + 1, 1
-    return year, month + 1
-
-
-
+from datetime import datetime
 
 
 router = APIRouter()
 
 
+#################################
+######## DASHBOARD SUMMARY ######
+#################################
+
 @router.get("/dashboard/summary")
 async def dashboard_summary(
+
     date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
+
     db: AsyncSession = Depends(get_db)
 ):
+
     assets = await get_assets(
         date=date,
         current_user=current_user,
         db=db
     )
-    total_assets = sum(a.value for a in assets)
 
     liabilities = await get_liability(
         date=date,
         current_user=current_user,
         db=db
     )
-    total_liabilities = sum(l.value for l in liabilities)
+
+    total_assets = sum(
+        a.value for a in assets
+    )
+
+    total_liabilities = sum(
+        l.value for l in liabilities
+    )
 
     return {
-        "net_worth": total_assets - total_liabilities,
-        "total_assets": total_assets,
-        "total_liabilities": total_liabilities
+
+        "net_worth":
+            total_assets - total_liabilities,
+
+        "total_assets":
+            total_assets,
+
+        "total_liabilities":
+            total_liabilities
     }
 
 
 #################################
-#######  ASSET BREAKDOWN ########
+######## ASSET BREAKDOWN ########
 #################################
 
 @router.get("/assets/breakdown")
 async def asset_breakdown(
+
     date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
+
     db: AsyncSession = Depends(get_db)
 ):
+
     assets = await get_assets(
         date=date,
         current_user=current_user,
@@ -89,6 +93,7 @@ async def asset_breakdown(
     category_map = {}
 
     for asset in assets:
+
         cat = asset.category
 
         if cat not in category_map:
@@ -96,59 +101,101 @@ async def asset_breakdown(
 
         category_map[cat] += asset.value
 
-    result = [
-        {"category": k, "total": v}
+    return [
+
+        {
+            "category": k,
+            "total": v
+        }
+
         for k, v in category_map.items()
     ]
 
-    return result
 
-######################################
-#########   NET WORTH TREND  #########
-######################################
+#################################
+######## NET WORTH TREND ########
+#################################
 
 @router.get("/dashboard/trend")
 async def net_worth_trend(
+
     start: str | None = Query(None),
+
     end: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
+
     db: AsyncSession = Depends(get_db)
 ):
-    
+
     asset_dates_result = await db.execute(
-        select(Asset.recorded_at).where(
+
+        select(Asset.recorded_at)
+
+        .where(
             Asset.user_id == current_user.id,
             Asset.is_deleted == False
         )
     )
 
     liability_dates_result = await db.execute(
-        select(Liability.recorded_at).where(
+
+        select(Liability.recorded_at)
+
+        .where(
             Liability.user_id == current_user.id,
             Liability.is_deleted == False
         )
     )
 
-    asset_dates = [row[0] for row in asset_dates_result.all()]
-    liability_dates = [row[0] for row in liability_dates_result.all()]
+    asset_dates = [
+        row[0]
+        for row in asset_dates_result.all()
+    ]
 
-    all_dates = sorted(set(asset_dates + liability_dates))
+    liability_dates = [
+        row[0]
+        for row in liability_dates_result.all()
+    ]
+
+    all_dates = sorted(
+        set(asset_dates + liability_dates)
+    )
 
     if not all_dates:
         return []
 
     if start:
-        start_dt = datetime.strptime(start, "%Y-%m-%d")
-        all_dates = [d for d in all_dates if d >= start_dt]
+
+        start_dt = datetime.strptime(
+            start,
+            "%Y-%m-%d"
+        )
+
+        all_dates = [
+            d for d in all_dates
+            if d >= start_dt
+        ]
 
     if end:
-        end_dt = datetime.strptime(end, "%Y-%m-%d")
-        all_dates = [d for d in all_dates if d <= end_dt]
+
+        end_dt = datetime.strptime(
+            end,
+            "%Y-%m-%d"
+        )
+
+        all_dates = [
+            d for d in all_dates
+            if d <= end_dt
+        ]
 
     trend = []
 
     for dt in all_dates:
-        date_str = dt.strftime("%Y-%m-%d")
+
+        date_str = dt.strftime(
+            "%Y-%m-%d"
+        )
 
         assets = await get_assets(
             date=date_str,
@@ -162,121 +209,427 @@ async def net_worth_trend(
             db=db
         )
 
-        total_assets = sum(a.value for a in assets)
-        total_liabilities = sum(l.value for l in liabilities)
+        total_assets = sum(
+            a.value for a in assets
+        )
+
+        total_liabilities = sum(
+            l.value for l in liabilities
+        )
 
         trend.append({
+
             "date": date_str,
-            "net_worth": total_assets - total_liabilities
+
+            "net_worth":
+                total_assets
+                - total_liabilities
         })
 
     return trend
 
 
-#########################
-##### CASHFLOW   ########
-#########################
+#################################
+###### CATEGORY BREAKDOWN #######
+#################################
 
+@router.get("/dashboard/category-breakdown")
+async def category_breakdown(
 
-
-@router.get("/dashboard/cashflow")
-async def get_cashflow(
-    year: int = Query(...),
-    month: int = Query(...),
     current_user: User = Depends(get_current_user),
+
     db: AsyncSession = Depends(get_db)
 ):
-    start, end = get_month_range(year, month)
 
-    income_result = await db.execute(
-        select(func.sum(Income.amount)).where(
-            Income.user_id == current_user.id,
-            Income.is_deleted == False,
-            Income.recorded_at >= start,
-            Income.recorded_at < end
+    result = await db.execute(
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.amount < 0
+        )
+
+        .where(
+            BankTransaction.is_deleted == False
         )
     )
-    total_income = income_result.scalar() or 0
 
-    expense_result = await db.execute(
-        select(FixedExpense).where(
-            FixedExpense.user_id == current_user.id,
-            FixedExpense.is_deleted == False,
-            FixedExpense.start_date <= end,
-            (FixedExpense.end_date == None) | (FixedExpense.end_date >= start)
+    transactions = result.scalars().all()
+
+    category_map = {}
+
+    for tx in transactions:
+
+        category = (
+            tx.category
+            or "Uncategorized"
         )
-    )
 
-    fixed_expenses = expense_result.scalars().all()
+        if category not in category_map:
+            category_map[category] = 0
 
-    total_fixed = sum(e.amount for e in fixed_expenses)
-
-    surplus = total_income - total_fixed
-
-    savings_rate = (surplus / total_income * 100) if total_income > 0 else 0
+        category_map[category] += abs(
+            tx.amount or 0
+        )
 
     return {
-        "month": f"{year}-{str(month).zfill(2)}",
-        "income": total_income,
-        "fixed_expenses": total_fixed,
-        "surplus": surplus,
-        "savings_rate": round(savings_rate, 2)
+
+        "categories": [
+
+            {
+                "category": k,
+
+                "amount":
+                    round(v, 2)
+            }
+
+            for k, v
+            in sorted(
+
+                category_map.items(),
+
+                key=lambda x: x[1],
+
+                reverse=True
+            )
+        ]
     }
 
-##############################
-#####  CASHFLOW TREND   ######
-##############################
 
-@router.get("/dashboard/cashflow-trend")
-async def cashflow_trend(
-    start_year: int = Query(...),
-    start_month: int = Query(...),
-    end_year: int = Query(...),
-    end_month: int = Query(...),
+#################################
+######## MONTHLY CASHFLOW #######
+#################################
+
+@router.get("/dashboard/monthly-cashflow")
+async def monthly_cashflow(
+
     current_user: User = Depends(get_current_user),
+
     db: AsyncSession = Depends(get_db)
 ):
-    results = []
 
-    year, month = start_year, start_month
+    result = await db.execute(
 
-    while (year < end_year) or (year == end_year and month <= end_month):
-        start, end = get_month_range(year, month)
+        select(BankTransaction)
 
-
-        income_result = await db.execute(
-            select(func.sum(Income.amount)).where(
-                Income.user_id == current_user.id,
-                Income.is_deleted == False,
-                Income.recorded_at >= start,
-                Income.recorded_at < end
-            )
+        .where(
+            BankTransaction.user_id
+            == current_user.id
         )
-        total_income = income_result.scalar() or 0
 
-
-        expense_result = await db.execute(
-            select(FixedExpense).where(
-                FixedExpense.user_id == current_user.id,
-                FixedExpense.is_deleted == False,
-                FixedExpense.start_date <= end,
-                (FixedExpense.end_date == None) | (FixedExpense.end_date >= start)
-            )
+        .where(
+            BankTransaction.is_deleted == False
         )
-        fixed_expenses = expense_result.scalars().all()
-        total_fixed = sum(e.amount for e in fixed_expenses)
+    )
 
-        
-        surplus = total_income - total_fixed
+    transactions = result.scalars().all()
 
-        results.append({
-            "month": f"{year}-{str(month).zfill(2)}",
-            "income": total_income,
-            "fixed_expenses": total_fixed,
-            "surplus": surplus
+    if not transactions:
+
+        return {
+
+            "income": 0,
+
+            "expenses": 0,
+
+            "surplus": 0,
+        }
+
+    monthly = {}
+
+    for tx in transactions:
+
+        month = tx.recorded_at.strftime(
+            "%Y-%m"
+        )
+
+        if month not in monthly:
+
+            monthly[month] = {
+
+                "income": 0,
+
+                "expenses": 0,
+            }
+
+        amount = tx.amount or 0
+
+        if amount > 0:
+
+            monthly[month]["income"] += amount
+
+        elif amount < 0:
+
+            monthly[month]["expenses"] += abs(
+                amount
+            )
+
+    month_count = max(
+        len(monthly),
+        1
+    )
+
+    total_income = sum(
+        m["income"]
+        for m in monthly.values()
+    )
+
+    total_expenses = sum(
+        m["expenses"]
+        for m in monthly.values()
+    )
+
+    avg_income = (
+        total_income / month_count
+    )
+
+    avg_expenses = (
+        total_expenses / month_count
+    )
+
+    avg_surplus = (
+        avg_income - avg_expenses
+    )
+
+    return {
+
+        "income":
+            round(avg_income, 2),
+
+        "expenses":
+            round(avg_expenses, 2),
+
+        "surplus":
+            round(avg_surplus, 2),
+    }
+
+
+#################################
+######## MONTHLY EXPENSES #######
+#################################
+
+@router.get("/dashboard/monthly-expense-trend")
+async def monthly_expense_trend(
+
+    current_user: User = Depends(get_current_user),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    result = await db.execute(
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.amount < 0
+        )
+
+        .where(
+            BankTransaction.is_deleted == False
+        )
+    )
+
+    transactions = result.scalars().all()
+
+    monthly = {}
+
+    for tx in transactions:
+
+        month = tx.recorded_at.strftime(
+            "%Y-%m"
+        )
+
+        if month not in monthly:
+            monthly[month] = 0
+
+        monthly[month] += abs(
+            tx.amount or 0
+        )
+
+    trend = []
+
+    for month in sorted(
+        monthly.keys()
+    ):
+
+        trend.append({
+
+            "month": month,
+
+            "amount":
+                round(
+                    monthly[month],
+                    2
+                )
         })
 
-        year, month = next_month(year, month)
+    return {
+        "trend": trend
+    }
 
-    return results
 
+#################################
+######## TOP MERCHANTS ##########
+#################################
+
+@router.get("/dashboard/top-merchants")
+async def top_merchants(
+
+    current_user: User = Depends(get_current_user),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    result = await db.execute(
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id == current_user.id
+        )
+
+        .where(
+            BankTransaction.transaction_type == "expense"
+        )
+
+        .where(
+            BankTransaction.is_deleted == False
+        )
+    )
+
+    transactions = result.scalars().all()
+
+    merchant_map = {}
+
+    for tx in transactions:
+        if (
+            not tx.merchant
+            or tx.merchant.strip() == ""
+            or tx.merchant == "-"
+        ):
+            continue
+        merchant = tx.merchant
+
+        if merchant not in merchant_map:
+            merchant_map[merchant] = 0
+
+        merchant_map[merchant] += abs(
+            tx.amount or 0
+        )
+
+    top = sorted(
+
+        merchant_map.items(),
+
+        key=lambda x: x[1],
+
+        reverse=True
+    )[:5]
+
+    return {
+
+        "merchants": [
+
+            {
+                "merchant": k,
+
+                "amount":
+                    round(v, 2)
+            }
+
+            for k, v in top
+        ]
+    }
+
+
+#################################
+######## SPENDING HEALTH ########
+#################################
+
+@router.get("/dashboard/spending-health")
+async def spending_health(
+
+    current_user: User = Depends(get_current_user),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    result = await db.execute(
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.is_deleted == False
+        )
+    )
+
+    transactions = result.scalars().all()
+
+    total_income = 0
+    total_expenses = 0
+
+    for tx in transactions:
+
+        amount = tx.amount or 0
+
+        if amount > 0:
+
+            total_income += amount
+
+        elif amount < 0:
+
+            total_expenses += abs(
+                amount
+            )
+
+    savings = (
+        total_income
+        - total_expenses
+    )
+
+    savings_ratio = 0
+
+    if total_income > 0:
+
+        savings_ratio = (
+            savings / total_income
+        ) * 100
+
+    return {
+
+        "income":
+            round(total_income, 2),
+
+        "expenses":
+            round(total_expenses, 2),
+
+        "savings":
+            round(savings, 2),
+
+        "savings_ratio":
+            round(savings_ratio, 1),
+
+        "benchmark": {
+
+            "needs": 50,
+
+            "wants": 30,
+
+            "savings": 20,
+        }
+    }

@@ -22,7 +22,8 @@ VALID_TRANSACTION_TYPES = [
     "income",
     "expense",
     "transfer",
-    "investment"
+    "investment",
+    "infer"
 ]
 
 
