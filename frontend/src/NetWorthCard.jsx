@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchWithAuth } from "./api";
-import { theme } from "./theme";
+import { fetchWithAuth } from "./services/api";
+import { theme } from "./theme/theme";
 
 const c = theme.colors;
 

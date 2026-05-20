@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { fetchWithAuth } from "../api.js";
-import { theme } from "../theme";
+import { fetchWithAuth } from "../services/api";
+import { theme } from "../theme/theme";
 
 export default function Transactions() {
 

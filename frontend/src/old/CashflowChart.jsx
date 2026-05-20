@@ -11,7 +11,7 @@ import {
   Bar
 } from "recharts";
 import { useEffect, useState } from "react";
-import { fetchWithAuth } from "./api";
+import { fetchWithAuth } from "./services/api";
 import { theme } from "./theme";
 
 export default function CashflowChart() {

@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 
-import { theme } from "../theme.js";
+import { theme } from "../theme/theme";
 
 const formatINR = (value) =>
   "₹" +

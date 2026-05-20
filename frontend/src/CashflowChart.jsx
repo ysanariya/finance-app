@@ -10,7 +10,7 @@ import {
   ComposedChart,
 } from "recharts";
 import { useEffect, useState } from "react";
-import { fetchWithAuth } from "./api";
+import { fetchWithAuth } from "./services/api";
 import { theme } from "./theme";
 
 const c = theme.colors;

@@ -14,7 +14,7 @@ import {
   Legend,
 } from "recharts";
 
-import { fetchWithAuth } from "../api";
+import { fetchWithAuth } from "../services/api";
 
 import { theme } from "../theme";
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchWithAuth } from "../api";
-import { theme } from "../theme";
-import { useDateFilter } from "../DateFilterContext";
+import { fetchWithAuth } from "../services/api";
+import { theme } from "../theme/theme";
+import { useDateFilter } from "../context/DateFilterContext";
 
 const formatINR = (value) =>
   "₹" +

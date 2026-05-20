@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 import NetWorthChart from "./NetWorthChart";
 import NetWorthCard from "./NetWorthCard";
-import Login from "./Login";
+import Login from "./pages/Login";
 import TopStatCards from "./TopStatCards";
 import AssetAllocation from "./AssetAllocation";
 import CashflowChart from "./CashflowChart";
@@ -11,13 +11,13 @@ import Transactions from "./pages/Transactions";
 import Cashflow from "./pages/CashFlow";
 import Rules from "./pages/Rules";
 
-import { DateFilterProvider } from "./DateFilterContext";
-import GlobalDateFilter from "./GlobalDateFilter";
+import { DateFilterProvider } from "./context/DateFilterContext";
+import GlobalDateFilter from "./components/filters/GlobalDateFilter";
 
 import ReviewInbox from "./pages/ReviewInbox";
 
 
-import { theme } from "./theme";
+import { theme } from "./theme/theme";
 
 import "./index.css";
 
