@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { CalendarDays, ChevronDown, Check } from "lucide-react";
-import { useDateFilter } from "./context/DateFilterContext";
-import { theme } from "./theme";
+import { useDateFilter } from "@/context/DateFilterContext.jsx";
+import { theme } from "@/theme/theme.js";
 
 const c = theme.colors;
 

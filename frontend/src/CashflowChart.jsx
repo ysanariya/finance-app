@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./services/api";
-import { theme } from "./theme";
+import { theme } from "@/theme/theme.js";
 
 const c = theme.colors;
 

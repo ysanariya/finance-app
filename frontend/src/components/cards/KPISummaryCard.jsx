@@ -1,4 +1,4 @@
-import { theme } from "../../theme";
+import { theme } from "@/theme/theme.js";
 
 const formatINR = (value) => {
   return (

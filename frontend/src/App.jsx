@@ -11,7 +11,7 @@ import Transactions from "./pages/Transactions";
 import Cashflow from "./pages/CashFlow";
 import Rules from "./pages/Rules";
 
-import { DateFilterProvider } from "./context/DateFilterContext";
+import { DateFilterProvider } from "@/context/DateFilterContext.jsx";
 import GlobalDateFilter from "./components/filters/GlobalDateFilter";
 
 import ReviewInbox from "./pages/ReviewInbox";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./services/api";
-import { theme } from "./theme";
+import { theme } from "@/theme/theme.js";
 
 function StatCard({ label, value, subtext, color }) {
   return (
