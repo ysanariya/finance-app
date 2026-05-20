@@ -54,9 +54,14 @@ export default function Transactions() {
   const totalPages =
     Math.ceil(total / limit);
 
-  useEffect(() => {
+  const [summary, setSummary] =
+    useState(null);
+
+useEffect(() => {
 
     fetchTransactions();
+
+    fetchSummary();
 
   }, [
     page,
@@ -66,7 +71,28 @@ export default function Transactions() {
     typeFilter,
     amountFilter,
     searchFilter,
-  ]);
+]);
+
+async function fetchSummary() {
+
+    try {
+
+      const data =
+        await fetchWithAuth(
+          "http://localhost:8000/transactions/summary"
+        );
+
+      setSummary(data);
+
+    } catch (err) {
+
+      console.error(
+        "Summary fetch failed",
+        err
+      );
+    }
+  }
+
 
   async function fetchTransactions() {
 
@@ -149,10 +175,10 @@ export default function Transactions() {
 
     const description = tx.description.toUpperCase();
 
-    if (description.includes("BLINKIT"))       merchantGuess = "BLINKIT";
-    else if (description.includes("ZOMATO"))   merchantGuess = "ZOMATO";
-    else if (description.includes("STARBUCKS")) merchantGuess = "STARBUCKS";
-    else if (description.includes("INDIGO"))   merchantGuess = "INDIGO";
+    if (description.includes("BLINKIT"))       merchantGuess = "Blinkit";
+    else if (description.includes("ZOMATO"))   merchantGuess = "Zomato";
+    else if (description.includes("STARBUCKS")) merchantGuess = "Starbucks";
+    else if (description.includes("INDIGO"))   merchantGuess = "Indigo";
 
     setRuleForm({
       pattern:          merchantGuess,
@@ -345,6 +371,322 @@ export default function Transactions() {
         )}
 
       </div>
+
+      {/* KPI CARDS */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(5, 1fr)",
+
+          gap: "18px",
+
+          marginBottom: "28px",
+        }}
+      >
+
+        {/* TOTAL TRANSACTIONS */}
+        <div
+          style={{
+            background:
+              theme.colors.card,
+
+            border:
+              `1px solid ${theme.colors.border}`,
+
+            borderRadius:
+              theme.layout.cardRadius,
+
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+
+              fontFamily:
+                theme.typography.body.fontFamily,
+            }}
+          >
+            Total Transactions
+          </div>
+
+          <div
+            style={{
+              marginTop: "10px",
+
+              color:
+                theme.colors.textPrimary,
+
+              fontSize: "30px",
+
+              fontWeight: 700,
+
+              fontFamily:
+                theme.typography.heading.fontFamily,
+            }}
+          >
+            {summary?.total_transactions || 0}
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+
+              color:
+                summary?.net_flow >= 0
+                  ? theme.colors.positive
+                  : theme.colors.negative,
+
+              fontSize: "13px",
+
+              fontFamily:
+                theme.typography.body.fontFamily,
+            }}
+          >
+            {summary?.net_flow >= 0 ? "↑" : "↓"}{" "}
+            {formatCurrency(summary?.net_flow || 0)}
+          </div>
+
+        </div>
+
+        {/* INCOME */}
+        <div
+          style={{
+            background:
+              theme.colors.card,
+
+            border:
+              `1px solid ${theme.colors.border}`,
+
+            borderRadius:
+              theme.layout.cardRadius,
+
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+            }}
+          >
+            Lifetime Income
+          </div>
+
+          <div
+            style={{
+              marginTop: "10px",
+
+              color:
+                theme.colors.positive,
+
+              fontSize: "30px",
+
+              fontWeight: 700,
+            }}
+          >
+            {formatCurrency(summary?.income_total || 0)}
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+            }}
+          >
+            {summary?.income_count || 0} transactions
+          </div>
+
+        </div>
+
+        {/* EXPENSE */}
+        <div
+          style={{
+            background:
+              theme.colors.card,
+
+            border:
+              `1px solid ${theme.colors.border}`,
+
+            borderRadius:
+              theme.layout.cardRadius,
+
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+            }}
+          >
+            Lifetime Expenses
+          </div>
+
+          <div
+            style={{
+              marginTop: "10px",
+
+              color:
+                theme.colors.negative,
+
+              fontSize: "30px",
+
+              fontWeight: 700,
+            }}
+          >
+            {formatCurrency(summary?.expense_total || 0)}
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+            }}
+          >
+            {summary?.expense_count || 0} transactions
+          </div>
+
+        </div>
+
+        {/* CLASSIFIED */}
+        <div
+          style={{
+            background:
+              theme.colors.card,
+
+            border:
+              `1px solid ${theme.colors.border}`,
+
+            borderRadius:
+              theme.layout.cardRadius,
+
+            padding: "20px",
+          }}
+        >
+
+          <div
+            style={{
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+            }}
+          >
+            Classified
+          </div>
+
+          <div
+            style={{
+              marginTop: "10px",
+
+              color:
+                theme.colors.textPrimary,
+
+              fontSize: "30px",
+
+              fontWeight: 700,
+            }}
+          >
+            {formatCurrency(summary?.classified_total || 0)}
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+
+              color:
+                theme.colors.textSecondary,
+
+              fontSize: "13px",
+            }}
+          >
+            {summary?.classified_pct || 0}% of{" "}
+            {summary?.total_transactions || 0} transactions
+          </div>
+
+        </div>
+
+          {/* NEEDS REVIEW */}
+            <div
+              style={{
+                background:
+                  theme.colors.card,
+
+                border:
+                  `1px solid ${theme.colors.border}`,
+
+                borderRadius:
+                  theme.layout.cardRadius,
+
+                padding: "20px",
+              }}
+            >
+
+              <div
+                style={{
+                  color:
+                    theme.colors.textSecondary,
+
+                  fontSize: "13px",
+                }}
+              >
+                Needs Review
+              </div>
+
+              <div
+                style={{
+                  marginTop: "10px",
+
+                  color:
+                    theme.colors.warning,
+
+                  fontSize: "30px",
+
+                  fontWeight: 700,
+                }}
+              >
+                {formatCurrency(summary?.review_total || 0)}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "8px",
+
+                  color:
+                    theme.colors.textSecondary,
+
+                  fontSize: "13px",
+                }}
+              >
+                {summary?.review_pct || 0}% of{" "}
+                {summary?.total_transactions || 0} transactions
+              </div>
+
+            </div>
+
+          </div>
+
 
       {/* FILTERS */}
 

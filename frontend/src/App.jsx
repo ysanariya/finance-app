@@ -14,6 +14,9 @@ import Rules from "./pages/Rules";
 import { DateFilterProvider } from "./DateFilterContext";
 import GlobalDateFilter from "./GlobalDateFilter";
 
+import ReviewInbox from "./pages/ReviewInbox";
+
+
 import { theme } from "./theme";
 
 import "./index.css";
@@ -27,6 +30,7 @@ const NAV_ITEMS = [
   { label: "Goals" },
   { label: "Transactions" },
   { label: "Rules" },
+  { label: "Review Inbox" },
 ];
 
 function Sidebar({
@@ -484,6 +488,10 @@ export default function App() {
 
         {activeTab === "Rules" && (
           <Rules />
+        )}
+
+        {activeTab === "Review Inbox" && (
+          <ReviewInbox />
         )}
 
       </main>
