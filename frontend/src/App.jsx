@@ -11,9 +11,13 @@ import Transactions from "./pages/Transactions";
 import Cashflow from "./pages/CashFlow";
 import Rules from "./pages/Rules";
 
+import { DateFilterProvider } from "./DateFilterContext";
+import GlobalDateFilter from "./GlobalDateFilter";
+
 import { theme } from "./theme";
 
 import "./index.css";
+
 
 const NAV_ITEMS = [
   { label: "Overview" },
@@ -36,7 +40,6 @@ function Sidebar({
     useState(false);
 
   return (
-
     <aside
       className="sidebar"
       style={{
@@ -325,40 +328,27 @@ function BottomTabs({
 function Dashboard() {
 
   return (
-
     <div
       style={{
         display: "flex",
-
         flexDirection: "column",
-
         gap: theme.layout.spacing,
       }}
     >
-
       <NetWorthCard />
-
       <TopStatCards />
-
       <div
         style={{
           display: "grid",
-
           gridTemplateColumns:
             "repeat(auto-fit, minmax(280px, 1fr))",
-
           gap: theme.layout.spacing,
         }}
       >
-
         <NetWorthChart />
-
         <CashflowChart />
-
       </div>
-
       <AssetAllocation />
-
     </div>
   );
 }
@@ -442,7 +432,6 @@ export default function App() {
   if (!isLoggedIn) {
 
     return (
-
       <Login
         onLogin={() => {
           window.location.reload();
@@ -453,7 +442,8 @@ export default function App() {
   }
 
   return (
-
+    <DateFilterProvider>
+        
     <div
       className="app-layout"
       style={{
@@ -464,7 +454,6 @@ export default function App() {
           theme.colors.textPrimary,
       }}
     >
-
       <Sidebar
         onLogout={handleLogout}
         currentUser={currentUser}
@@ -479,6 +468,7 @@ export default function App() {
             theme.colors.background,
         }}
       >
+      <GlobalDateFilter />
 
         {activeTab === "Overview" && (
           <Dashboard />
@@ -503,7 +493,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
-
-    </div>
+      </div>
+    </DateFilterProvider>
+    
   );
 }

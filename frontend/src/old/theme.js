@@ -45,5 +45,7 @@ export const theme = {
     maxWidth: "1200px",
     radius: "16px",
     spacing: "20px",
+    // inside layout:
+    dropdownShadow: "0 12px 40px rgba(0,0,0,0.6)",
   },
 };

@@ -11,6 +11,8 @@ from routers.auth import get_current_user
 from routers.assets import get_assets
 from routers.liabilities import get_liability
 
+from services.date_utils import resolve_date_range
+
 from models.user import User
 
 from models.asset import Asset
@@ -31,11 +33,10 @@ router = APIRouter()
 async def dashboard_summary(
 
     date: str | None = Query(None),
-
     current_user: User = Depends(get_current_user),
-
     db: AsyncSession = Depends(get_db)
 ):
+    
 
     assets = await get_assets(
         date=date,
@@ -236,10 +237,15 @@ async def net_worth_trend(
 @router.get("/dashboard/category-breakdown")
 async def category_breakdown(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -261,6 +267,14 @@ async def category_breakdown(
 
         .where(
             BankTransaction.is_deleted == False
+        )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
         )
     )
 
@@ -313,10 +327,15 @@ async def category_breakdown(
 @router.get("/dashboard/monthly-cashflow")
 async def monthly_cashflow(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -329,6 +348,14 @@ async def monthly_cashflow(
 
         .where(
             BankTransaction.is_deleted == False
+        )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
         )
     )
 
@@ -343,6 +370,10 @@ async def monthly_cashflow(
             "expenses": 0,
 
             "surplus": 0,
+
+            "total_income": 0,
+
+            "total_expenses": 0,
         }
 
     monthly = {}
@@ -411,9 +442,10 @@ async def monthly_cashflow(
 
         "surplus":
             round(avg_surplus, 2),
-        
+
         "total_income":
             round(total_income, 2),
+
         "total_expenses":
             round(total_expenses, 2),
     }
@@ -426,10 +458,15 @@ async def monthly_cashflow(
 @router.get("/dashboard/monthly-expense-trend")
 async def monthly_expense_trend(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -446,6 +483,14 @@ async def monthly_expense_trend(
 
         .where(
             BankTransaction.is_deleted == False
+        )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
         )
     )
 
@@ -495,10 +540,15 @@ async def monthly_expense_trend(
 @router.get("/dashboard/top-merchants")
 async def top_merchants(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -520,6 +570,14 @@ async def top_merchants(
         .where(
             BankTransaction.is_deleted == False
         )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
+        )
     )
 
     transactions = result.scalars().all()
@@ -527,12 +585,14 @@ async def top_merchants(
     merchant_map = {}
 
     for tx in transactions:
+
         if (
             not tx.merchant
             or tx.merchant.strip() == ""
             or tx.merchant == "-"
         ):
             continue
+
         merchant = tx.merchant
 
         if merchant not in merchant_map:
@@ -574,10 +634,15 @@ async def top_merchants(
 @router.get("/dashboard/spending-health")
 async def spending_health(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -590,6 +655,14 @@ async def spending_health(
 
         .where(
             BankTransaction.is_deleted == False
+        )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
         )
     )
 
@@ -657,10 +730,15 @@ async def spending_health(
 @router.get("/dashboard/monthly-income-trend")
 async def monthly_income_trend(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -677,6 +755,14 @@ async def monthly_income_trend(
 
         .where(
             BankTransaction.is_deleted == False
+        )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
         )
     )
 
@@ -718,6 +804,7 @@ async def monthly_income_trend(
         "trend": trend
     }
 
+
 #####################################
 ######## TOP INCOME SOURCE ##########
 #####################################
@@ -725,10 +812,15 @@ async def monthly_income_trend(
 @router.get("/dashboard/top-income")
 async def top_income(
 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+
     current_user: User = Depends(get_current_user),
 
     db: AsyncSession = Depends(get_db)
 ):
+
+    start, end = resolve_date_range(start_date, end_date)
 
     result = await db.execute(
 
@@ -749,6 +841,14 @@ async def top_income(
         .where(
             BankTransaction.is_deleted == False
         )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
+        )
     )
 
     transactions = result.scalars().all()
@@ -756,12 +856,14 @@ async def top_income(
     merchant_map = {}
 
     for tx in transactions:
+
         if (
             not tx.merchant
             or tx.merchant.strip() == ""
             or tx.merchant == "-"
         ):
             continue
+
         merchant = tx.merchant
 
         if merchant not in merchant_map:

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { useDateFilter } from "../DateFilterContext";
+
 import {
   ResponsiveContainer,
   BarChart,
@@ -41,20 +43,36 @@ export default function Cashflow() {
   const [incomeByCategory, setIncomeByCategory] = useState([]);
   const [loading, setLoading]           = useState(true);
 
+  const { filter } = useDateFilter();
+
   async function loadData() {
 
     try {
 
       setLoading(true);
 
+      const params = new URLSearchParams();
+
+        if (filter?.start) {
+          params.append("start_date", filter.start);
+        }
+
+        if (filter?.end) {
+          params.append("end_date", filter.end);
+        }
+
+        const query = params.toString()
+          ? `?${params.toString()}`
+          : "";
+
       const [summaryRes, ExpenseTrendRes, IncomeTrendRes, categoryRes, merchantRes, incomeByCategoryRes] =
         await Promise.all([
-          fetchWithAuth("http://localhost:8000/dashboard/monthly-cashflow"),
-          fetchWithAuth("http://localhost:8000/dashboard/monthly-expense-trend"),
-          fetchWithAuth("http://localhost:8000/dashboard/monthly-income-trend"),
-          fetchWithAuth("http://localhost:8000/dashboard/category-breakdown"),
-          fetchWithAuth("http://localhost:8000/dashboard/top-merchants"),
-          fetchWithAuth("http://localhost:8000/dashboard/top-income"),
+          fetchWithAuth(`http://localhost:8000/dashboard/monthly-cashflow${query}`),
+          fetchWithAuth(`http://localhost:8000/dashboard/monthly-expense-trend${query}`),
+          fetchWithAuth(`http://localhost:8000/dashboard/monthly-income-trend${query}`),
+          fetchWithAuth(`http://localhost:8000/dashboard/category-breakdown${query}`),
+          fetchWithAuth(`http://localhost:8000/dashboard/top-merchants${query}`),
+          fetchWithAuth(`http://localhost:8000/dashboard/top-income${query}`),
         ]);
 
       setSummary({
@@ -89,10 +107,7 @@ export default function Cashflow() {
             : 0,
       }));
 
-    console.log(
-      "Income with Percentages:",
-      incomeWithPercentages
-    );
+    console.log(filter);
 
     setIncomeByCategory(
       incomeWithPercentages
@@ -118,7 +133,9 @@ export default function Cashflow() {
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, [filter]);
 
         const allMonths = [
         ...new Set([
