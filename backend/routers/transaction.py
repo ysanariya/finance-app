@@ -434,7 +434,7 @@ async def get_review_transactions(
         query
 
         .order_by(
-            BankTransaction.recorded_at.desc()
+            BankTransaction.amount.desc()
         )
 
         .offset(offset)

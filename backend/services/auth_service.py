@@ -13,7 +13,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")   #remember to move this to .env file
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def create_access_token(data: dict):
     to_encode = data.copy()

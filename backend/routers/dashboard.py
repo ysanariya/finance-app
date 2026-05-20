@@ -19,7 +19,7 @@ from models.asset import Asset
 from models.liability import Liability
 from models.transaction import BankTransaction
 
-from datetime import datetime
+from datetime import datetime, date, timedelta, timezone
 
 
 router = APIRouter()
@@ -894,5 +894,98 @@ async def top_income(
             }
 
             for k, v in top
+        ]
+    }
+
+##########################################
+#### Category Trend Over Time ############
+##########################################
+
+
+@router.get("/dashboard/category-trend")
+async def category_trend(
+
+    category: str,
+
+    start_date: date | None = None,
+
+    end_date: date | None = None,
+
+    current_user: User =
+      Depends(get_current_user),
+
+    db: AsyncSession =
+      Depends(get_db)
+):
+
+    query = (
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.amount < 0
+        )
+
+        .where(
+            BankTransaction.category
+            == category
+        )
+
+        .where(
+            BankTransaction.is_deleted
+            == False
+        )
+    )
+
+    if start_date:
+
+        query = query.where(
+            BankTransaction.recorded_at >= start_date
+        )
+
+    if end_date:
+
+        query = query.where(
+            BankTransaction.recorded_at <= end_date
+        )
+
+    result = await db.execute(query)
+
+    transactions = result.scalars().all()
+
+    month_map = {}
+
+    for tx in transactions:
+
+        month = tx.recorded_at.strftime("%Y-%m")
+
+        if month not in month_map:
+            month_map[month] = 0
+
+        month_map[month] += abs(
+            tx.amount or 0
+        )
+
+    return {
+
+        "category": category,
+
+        "trend": [
+
+            {
+                "month": k,
+
+                "amount":
+                    round(v, 2)
+            }
+
+            for k, v in sorted(
+                month_map.items()
+            )
         ]
     }
