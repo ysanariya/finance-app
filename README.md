@@ -1,62 +1,194 @@
-# 💰 Finance App
+# Finance App
 
-A personal finance tracking system built with **FastAPI + React**, focused on giving clear visibility into net worth, cashflow, and financial health.
+A personal finance operating system built using **FastAPI + React**, designed for deep visibility into cashflow, budgeting, spending behavior, and long-term financial trajectory.
 
-This is not a budgeting app.
-It is a **system to understand how money moves and compounds over time**.
+The system prioritizes:
 
----
+* structured financial modeling
+* auditability
+* historical tracking
+* extensible financial analytics
 
-## 🚀 Features
+instead of shallow dashboard metrics.
 
-### Core
 
-* Track **Assets & Liabilities** with time-based snapshots
-* Compute **Net Worth over time**
-* Record **Income events**
-* Define **Fixed Expenses (recurring rules)**
-* Generate **Cashflow (income - expenses)**
+# Core Philosophy
 
----
+Most finance apps optimize for:
 
-### Dashboard
+* visual polish
+* oversimplified summaries
+* hidden calculations
+* manual categorization chaos
 
-* 📈 Net Worth Trend (event-based)
-* 📊 Cashflow Trend (monthly)
-* 🧮 Asset Allocation (donut chart)
-* 📉 Surplus tracking
+This project optimizes for:
 
----
+```text
+clarity > convenience
+financial modeling > spreadsheets
+historical traceability > mutable state
+system architecture > feature bloat
+```
 
-### Architecture Highlights
 
-* Clean separation via **FastAPI routers**
-* Async DB access with **SQLAlchemy**
-* Rule-based modeling for recurring expenses
-* Derived metrics (no redundant storage)
+# Current Capabilities
 
----
+## Authentication
 
-## 🛠️ Tech Stack
+* JWT-based authentication
+* Protected API routes
+* Automatic invalid-token logout flow
 
-### Backend
+
+# Transactions Engine
+
+## Features
+
+* Transaction ingestion
+* Merchant tracking
+* Categorization pipeline
+* Rule-based classification architecture
+* Category normalization
+* Historical transaction persistence
+
+## Architecture
+
+Transactions act as the system's canonical financial event layer.
+
+Everything derives from transactions:
+
+* budgets
+* spending analytics
+* category trends
+* future scoring systems
+
+
+# Budgeting System
+
+## Features
+
+* Monthly budgeting
+* Annual budgeting
+* Date-window budgeting
+* Budget version history
+* Conflict-aware budget updates
+* Immutable budget tracking architecture
+
+## Budget Architecture
+
+Budgets are modeled as:
+
+```text
+financial policies
+```
+
+—not mutable spreadsheet rows.
+
+Updating a budget:
+
+* archives previous version (`is_deleted = True`)
+* inserts new active version
+* preserves historical budget evolution
+
+This enables:
+
+* historical budget trend analysis
+* future projections
+* budget drift analytics
+* auditability
+
+
+## Budget Validation Rules
+
+* Categories are sourced from classified transaction categories
+* Free-text categories are disallowed
+* Only one active budgeting strategy per category
+* Budget conflicts trigger confirmation workflows
+
+
+# Dashboard
+
+## Current Widgets
+
+* Net Worth Trend
+* Cashflow Trend
+* Asset Allocation
+* KPI Summary Cards
+* Category Rankings
+* Spending Trends
+* Budget Viewer
+
+
+# Financial Modeling Concepts
+
+## Event-Sourced Thinking
+
+The system distinguishes between:
+
+| Type           | Modeling Strategy |
+| -------------- | ----------------- |
+| Transactions   | Event-based       |
+| Budgets        | Versioned policy  |
+| Fixed expenses | Rule-based        |
+| Net worth      | Derived state     |
+
+This minimizes redundant storage and enables historical reconstruction.
+
+
+# Tech Stack
+
+## Backend
 
 * FastAPI
-* SQLAlchemy (async)
+* SQLAlchemy Async ORM
 * SQLite
 * JWT Authentication
+* Pydantic
 
-### Frontend
+
+## Frontend
 
 * React (Vite)
-* Recharts (charts)
-* Custom theme system
+* Recharts
+* Context API
+* Custom theme architecture
+* Modular component system
 
----
 
-## ⚙️ Setup
+# Frontend Architecture
 
-### 1. Clone repo
+```text
+src/
+├── components/
+│   ├── cards/
+│   ├── charts/
+│   ├── filters/
+│   ├── forms/
+│   └── tables/
+│
+├── pages/
+├── services/
+├── utils/
+├── context/
+└── theme/
+```
+
+
+# Backend Architecture
+
+```text
+backend/
+├── routers/
+├── models/
+├── schemas/
+├── services/
+└── auth/
+```
+
+
+# Setup
+
+# 1. Clone Repository
 
 ```bash
 git clone https://github.com/ysanariya/finance-app.git
@@ -65,124 +197,140 @@ cd finance-app
 
 ---
 
-### 2. Backend setup
+# 2. Backend Setup
 
 ```bash
 cd backend
+
 python -m venv venv
-venv\Scripts\activate   # Windows
+
+source venv/bin/activate
+# OR
+venv\Scripts\activate
+
 pip install -r requirements.txt
 ```
 
-Create `.env`:
+Create `.env`
 
 ```env
 SECRET_KEY=your_secret_key_here
 ```
 
-Run server:
+Run backend:
 
 ```bash
 uvicorn main:app --reload
 ```
 
----
 
-### 3. Frontend setup
+# 3. Frontend Setup
 
 ```bash
 cd ../frontend
+
 npm install
+
 npm run dev
 ```
 
----
 
-### 4. Access app
+# 4. Access Application
 
-```
-Frontend: http://localhost:5173
-Backend:  http://localhost:8000
-```
+```text
+Frontend:
+http://localhost:5173
 
----
-
-## 🔐 Authentication
-
-* JWT-based login system
-* Token stored in local storage
-* Protected routes via Bearer token
-
----
-
-## 📊 Key Concepts
-
-### Event vs Rule Modeling
-
-* **Income** → event-based
-* **Fixed Expenses** → rule-based
-* **Cashflow** → computed dynamically
-
-This avoids data duplication and keeps the system flexible.
-
----
-
-### Net Worth Calculation
-
-```
-Net Worth = Total Assets - Total Liabilities
+Backend:
+http://localhost:8000
 ```
 
-Latest values per asset/liability are derived using subqueries.
 
----
+# Current System Design Decisions
 
-## ⚠️ Known Limitations
+## Why immutable budget history?
 
-* No transaction ingestion yet (manual inputs only)
-* No refresh tokens (session expires after ~30 min)
-* Some frontend values still being wired dynamically
-* Performance not optimized for large datasets yet
+Because overwriting financial policies destroys analytical history.
 
----
+The system instead tracks:
 
-## 🔜 Roadmap
-
-### Phase 2 (next focus)
-
-* Transaction model
-* Bank statement ingestion (HDFC)
-* Auto categorization engine
-
-### Phase 3
-
-* Full cashflow engine (fixed + variable)
-* Financial health scoring
-* Insights layer
-
----
-
-## 🧠 Why this project?
-
-Most finance apps:
-
-* hide logic
-* oversimplify data
-* focus on UI over understanding
-
-This project focuses on:
-
-```
-clarity > convenience
-structure > clutter
-insight > dashboards
+```text
+budget evolution over time
 ```
 
+which enables future:
+
+* forecasting
+* behavior analysis
+* trend reconstruction
+
+
+## Why categories come from transactions?
+
+Transactions are the canonical source of financial truth.
+
+Allowing arbitrary budgeting categories creates:
+
+* taxonomy drift
+* duplicate semantics
+* broken analytics
+
+
+# Current Limitations
+
+* SQLite still used for local persistence
+* No bank API integrations yet (or ever coz RBI, lol)
+* No refresh token rotation
+* No recurring transaction inference yet
+* No forecasting engine yet
+* No automated anomaly detection yet
+
+
+# Planned Roadmap
+
+## Phase 2
+
+### Financial Intelligence Layer
+
+* Budget adherence scoring
+* Spending anomaly detection
+* Burn-rate prediction
+* Monthly trajectory engine
+* Savings optimization
+
+
+## Phase 3
+
+### Wealth Operating System
+
+* Goal planning
+* FIRE projections (maybe, maybe not)
+* Portfolio integration (with CSV or PDF uploads - no APIs)
+* Tax analytics
+* Financial simulations
+
+
+# Design Principles
+
+```text
+No fake metrics
+No decorative dashboards
+No hidden calculations
+No black-box finance logic
+```
+
+The goal is a transparent financial system that can evolve into a complete personal finance intelligence platform.
+
+---
+---
+---
+---
 ---
 
-## 📌 Author
+# Author
 
-Built for personal use and learning.
-Contributions and feedback welcome.
+Built as a long-term systems architecture project focused on financial clarity, behavioral analytics, and compounding visibility. Completely vibe-coded with my distinguished colleagues:
 
----
+* señor ChatGPT (master of confident overengineering, philosophical tangents, and “technically correct” solutions that somehow create three new problems)
+* monsieur Claude (calm architect of elegant abstractions, suspiciously reasonable explanations, and dangerously persuasive refactor suggestions)
+* Gemini bhai™ (provider of cosmic confusion, unsolicited enlightenment, and answers that feel spiritually correct but operationally risky)
