@@ -434,7 +434,7 @@ async def get_review_transactions(
         query
 
         .order_by(
-            BankTransaction.amount.desc()
+            BankTransaction.amount.asc()
         )
 
         .offset(offset)
@@ -839,3 +839,40 @@ async def get_transaction_summary(
         "review_pct":
             review_pct
     }
+
+@router.get("/transactions/categories")
+async def get_transaction_categories(
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    result = await db.execute(
+
+        select(
+            BankTransaction.category
+        )
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.category
+            != None
+        )
+
+        .distinct()
+
+        .order_by(
+            BankTransaction.category.asc()
+        )
+    )
+
+    categories = result.scalars().all()
+
+    return categories

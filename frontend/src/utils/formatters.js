@@ -1,37 +1,54 @@
-export const formatINR = (value) => {
+export const formatINR = (
+
+  value,
+
+  options = {}
+
+) => {
+
+  const {
+
+    showDecimals = false,
+
+    fallback = "₹0"
+
+  } = options;
+
 
   if (
+
     value === null ||
-    value === undefined
+
+    value === undefined ||
+
+    value === ""
+
   ) {
-    return "₹0";
+
+    return fallback;
   }
 
+
   return new Intl.NumberFormat(
+
     "en-IN",
+
     {
+
       style: "currency",
+
       currency: "INR",
-      maximumFractionDigits: 2,
+
+      minimumFractionDigits:
+        showDecimals ? 2 : 0,
+
+      maximumFractionDigits:
+        showDecimals ? 2 : 0,
     }
-  ).format(value);
-};
 
-export const formatMonth = (monthString) => {
+  )
 
-  const [year, month] =
-    monthString.split("-");
+  .format(value)
 
-  const date = new Date(
-    year,
-    month - 1
-  );
-
-  return date.toLocaleString(
-    "en-IN",
-    {
-      month: "short",
-      year: "2-digit",
-    }
-  );
+  .replace("₹", "₹ ");
 };

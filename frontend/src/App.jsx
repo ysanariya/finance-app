@@ -15,7 +15,7 @@ import { DateFilterProvider } from "@/context/DateFilterContext.jsx";
 import GlobalDateFilter from "./components/filters/GlobalDateFilter";
 
 import ReviewInbox from "./pages/ReviewInbox";
-
+import Budget from "./pages/Budget";
 
 import { theme } from "./theme/theme";
 
@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   { label: "Transactions" },
   { label: "Rules" },
   { label: "Review Inbox" },
+  { label: "Budget" },
 ];
 
 function Sidebar({
@@ -492,6 +493,10 @@ export default function App() {
 
         {activeTab === "Review Inbox" && (
           <ReviewInbox />
+        )}
+
+        {activeTab === "Budget" && (
+          <Budget />
         )}
 
       </main>

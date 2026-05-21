@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import assets, auth, liabilities, dashboard, income, fixed_expense, transaction
 from dotenv import load_dotenv
 from models.rule import TransactionRule
-from routers import rules
+from routers import rules, budget
 
 
 load_dotenv()
@@ -38,5 +38,6 @@ app.include_router(fixed_expense.router)
 app.include_router(transaction.router)
 app.include_router(dashboard.router)
 app.include_router(rules.router)
+app.include_router(budget.router)
 
 
