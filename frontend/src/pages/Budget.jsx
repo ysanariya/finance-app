@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 import BudgetTable from "@/components/tables/BudgetTable";
 
+import BudgetSankeyChart from "@/components/charts/BudgetSankeyChart";
+
 import BudgetTargetForm from "@/components/forms/BudgetTargetForm";
 
 import { formatINR } from "@/utils/formatters";
@@ -29,6 +31,8 @@ export default function Budget() {
   const [draftBudgets, setDraftBudgets] = useState([]);
   
   const [savedBudgets, setSavedBudgets] = useState([]);
+
+  const [budgetTarget, setBudgetTarget] = useState(null);
   
   const [showBudgetModal, setShowBudgetModal] = useState(false);
 
@@ -44,6 +48,24 @@ export default function Budget() {
   ////////////////////////////////////////////
   // LOAD DATA
   ////////////////////////////////////////////
+  const loadBudgetTarget =
+    async () => {
+
+      try {
+
+        const data =
+          await getBudgetTarget();
+
+        setBudgetTarget(data);
+
+      } catch (err) {
+
+        console.error(err);
+      }
+    };
+
+
+
 
   const loadData = async () => {
 
@@ -94,6 +116,7 @@ export default function Budget() {
 
   useEffect(() => {
 
+    loadBudgetTarget();
     loadData();
 
   }, []);
@@ -920,6 +943,11 @@ const handleSaveBudgets =
     </div>
   )
 }
+
+<BudgetSankeyChart
+  budgets={savedBudgets}
+  monthlyIncome={ budgetTarget?.monthly_income_target || 0}
+/>
 
 
 

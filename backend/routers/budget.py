@@ -74,7 +74,7 @@ async def create_budget(
         )
 
         existing = (
-            existing.scalar_one_or_none()
+            existing.scalars().first()
         )
 
         ##################################################
@@ -176,7 +176,7 @@ async def create_budget(
         )
 
         existing = (
-            existing.scalar_one_or_none()
+            existing.scalars().first()
         )
 
         ##################################################
