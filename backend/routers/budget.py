@@ -472,13 +472,9 @@ async def get_budget_deviation(
             Budget.is_deleted
             == False
         )
-
-        .where(
-            Budget.budget_type
-            == resolved_budget_type
-        )
     )
 
+    
     if category:
 
         budget_query = budget_query.where(
@@ -486,48 +482,32 @@ async def get_budget_deviation(
         )
 
     ##################################################
-    ######## MONTHLY FILTERING #######################
+    ######## RANGE OVERLAP FILTERING #################
     ##################################################
 
-    if resolved_budget_type == "monthly":
+    budget_query = (
 
-        budget_query = (
-
-            budget_query
-
+        budget_query
             .where(
-                Budget.start_date <= start.date()
+                Budget.start_date <= end.date()
             )
-
             .where(
-                Budget.end_date >= end.date()
+                Budget.end_date >= start.date()
             )
-        )
-
-    ##################################################
-    ######## ANNUAL FILTERING ########################
-    ##################################################
-
-    elif resolved_budget_type == "annual":
-
-        budget_query = (
-
-            budget_query
-
-            .where(
-                Budget.start_date <= start.date()
-            )
-
-            .where(
-                Budget.end_date >= end.date()
-            )
-        )
+    )
 
     budget_result = await db.execute(
         budget_query
     )
 
     budgets = budget_result.scalars().all()
+
+    budgets = sorted(
+
+        budgets,
+
+        key=lambda b: b.category.lower()
+    )
 
     ##################################################
     ######## NO BUDGETS ##############################
@@ -629,6 +609,21 @@ async def get_budget_deviation(
             tx.amount or 0
         )
 
+##################################################
+######## YTD MONTH MULTIPLIER ####################
+##################################################
+
+    elapsed_months = 1
+
+    if resolved_budget_type == "annual":
+
+        current_date = datetime.utcnow().date()
+
+        elapsed_months = current_date.month
+
+
+
+
     ##################################################
     ######## BUILD RESPONSE ##########################
     ##################################################
@@ -641,6 +636,19 @@ async def get_budget_deviation(
 
     for budget in budgets:
 
+        print({
+
+            "category": budget.category,
+
+            "budget_type": budget.budget_type,
+
+            "raw_amount": budget.amount,
+
+            "resolved_budget_type": resolved_budget_type,
+
+            "elapsed_months": elapsed_months,
+        })
+
         actual_spent = round(
 
             spend_map.get(
@@ -651,10 +659,77 @@ async def get_budget_deviation(
             2
         )
 
+
+        
+        ##################################################
+        ######## NORMALIZE BUDGET ########################
+        ##################################################
+
+        normalized_budget = budget.amount
+
+        ##################################################
+        ######## MONTHLY VIEW ############################
+        ##################################################
+
+        if resolved_budget_type == "monthly":
+
+            ##################################################
+            ######## ANNUAL → MONTHLY ########################
+            ##################################################
+
+            if budget.budget_type == "annual":
+
+                normalized_budget = (
+
+                    budget.amount / 12
+                )
+
+        ##################################################
+        ######## ANNUAL / YTD VIEW #######################
+        ##################################################
+
+        elif resolved_budget_type == "annual":
+
+            ##################################################
+            ######## MONTHLY → YTD ###########################
+            ##################################################
+
+            if budget.budget_type == "monthly":
+
+                normalized_budget = (
+
+                    budget.amount
+                    * elapsed_months
+                )
+
+            ##################################################
+            ######## ANNUAL → YTD ############################
+            ##################################################
+
+            elif budget.budget_type == "annual":
+
+                normalized_budget = (
+
+                    budget.amount
+
+                    * (
+                        elapsed_months / 12
+                    )
+                )
+
         budget_amount = round(
-            budget.amount,
+            normalized_budget,
             2
         )
+
+
+                
+        print({
+            "category": budget.category,
+
+            "normalized_budget": budget_amount,
+        })
+
 
         deviation_amount = round(
             actual_spent - budget_amount,

@@ -22,11 +22,42 @@ import {
   getBudgetCategoryTrend,
 } from "@/services/budgetAPI";
 
-import { formatINR }
-from "@/utils/formatters";
+import { formatINR } from "@/utils/formatters";
 
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+const styles = {
+
+  pagePadding: "24px",
+
+  cardRadius: "14px",
+
+  buttonRadius: "10px",
+
+  shadow:
+    "0 10px 40px rgba(0,0,0,0.35)",
+};
 
 export default function Performance() {
+
+  const currentYear =
+    new Date().getFullYear();
+
+  const currentMonth =
+    new Date().getMonth();
 
   const [loading, setLoading] =
     useState(true);
@@ -34,8 +65,11 @@ export default function Performance() {
   const [data, setData] =
     useState(null);
 
-  const [selectedPeriod, setSelectedPeriod] =
-    useState("current_month");
+  const [selectedYear, setSelectedYear] =
+    useState(currentYear);
+
+  const [selectedMonth, setSelectedMonth] =
+    useState(null);
 
   const [selectedCategory, setSelectedCategory] =
     useState(null);
@@ -43,8 +77,33 @@ export default function Performance() {
   const [trendData, setTrendData] =
     useState([]);
 
-  const [drawerLoading, setDrawerLoading] =
-    useState(false);
+  //////////////////////////////////////////////////
+  // YEAR OPTIONS
+  //////////////////////////////////////////////////
+
+  const years = [];
+
+  for (
+    let year = 2024;
+    year <= currentYear;
+    year++
+  ) {
+    years.push(year);
+  }
+
+  //////////////////////////////////////////////////
+  // ACTIVE MONTHS
+  //////////////////////////////////////////////////
+
+  const activeMonths =
+    selectedYear === currentYear
+
+      ? MONTHS.slice(
+          0,
+          currentMonth + 1
+        )
+
+      : MONTHS;
 
   //////////////////////////////////////////////////
   // DATE RANGE
@@ -52,22 +111,21 @@ export default function Performance() {
 
   function buildDateRange() {
 
-    const now = new Date();
+    //////////////////////////////////////////////////
+    // MONTH VIEW
+    //////////////////////////////////////////////////
 
-    if (
-      selectedPeriod
-      === "current_month"
-    ) {
+    if (selectedMonth !== null) {
 
       const start = new Date(
-        now.getFullYear(),
-        now.getMonth(),
+        selectedYear,
+        selectedMonth,
         1
       );
 
       const end = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
+        selectedYear,
+        selectedMonth + 1,
         0
       );
 
@@ -84,43 +142,24 @@ export default function Performance() {
       };
     }
 
-    if (
-      selectedPeriod
-      === "previous_month"
-    ) {
-
-      const start = new Date(
-        now.getFullYear(),
-        now.getMonth() - 1,
-        1
-      );
-
-      const end = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        0
-      );
-
-      return {
-
-        startDate:
-          start.toISOString().split("T")[0],
-
-        endDate:
-          end.toISOString().split("T")[0],
-
-        budgetType:
-          "monthly",
-      };
-    }
+    //////////////////////////////////////////////////
+    // YEAR VIEW
+    //////////////////////////////////////////////////
 
     return {
 
       startDate:
-        `${now.getFullYear()}-01-01`,
+        `${selectedYear}-01-01`,
 
       endDate:
-        `${now.getFullYear()}-12-31`,
+
+        selectedYear === currentYear
+
+          ? new Date()
+              .toISOString()
+              .split("T")[0]
+
+          : `${selectedYear}-12-31`,
 
       budgetType:
         "annual",
@@ -128,7 +167,7 @@ export default function Performance() {
   }
 
   //////////////////////////////////////////////////
-  // FETCH
+  // FETCH PERFORMANCE
   //////////////////////////////////////////////////
 
   useEffect(() => {
@@ -169,58 +208,60 @@ export default function Performance() {
 
     load();
 
-  }, [selectedPeriod]);
+  }, [selectedYear, selectedMonth]);
+
+  //////////////////////////////////////////////////
+  // FETCH TREND
+  //////////////////////////////////////////////////
 
   useEffect(() => {
 
-  async function loadTrend() {
+    async function loadTrend() {
 
-    if (!selectedCategory) {
+      if (!selectedCategory) {
 
-      setTrendData([]);
-      return;
+        setTrendData([]);
+        return;
+      }
+
+      try {
+
+        const range =
+          buildDateRange();
+
+        const res =
+          await getBudgetCategoryTrend({
+
+            category:
+              selectedCategory,
+
+            startDate:
+              range.startDate,
+
+            endDate:
+              range.endDate,
+          });
+
+        setTrendData(
+          res.trend || []
+        );
+
+      } catch (err) {
+
+        console.error(err);
+      }
     }
 
-    try {
+    loadTrend();
 
-      setDrawerLoading(true);
-
-      const range =
-        buildDateRange();
-
-      const res =
-        await getBudgetCategoryTrend({
-
-          category:
-            selectedCategory,
-
-          startDate:
-            range.startDate,
-
-          endDate:
-            range.endDate,
-        });
-
-      setTrendData(
-        res.trend || []
-      );
-
-    } catch (err) {
-
-      console.error(err);
-
-    } finally {
-
-      setDrawerLoading(false);
-    }
-  }
-
-  loadTrend();
-
-}, [selectedCategory, selectedPeriod]);
+  }, [
+    selectedCategory,
+    selectedYear,
+    selectedMonth,
+  ]);
 
   //////////////////////////////////////////////////
-  // DERIVED
+  // CATEGORY DATA
   //////////////////////////////////////////////////
 
   const categories =
@@ -229,39 +270,76 @@ export default function Performance() {
       if (!data?.categories)
         return [];
 
-      return [...data.categories]
+      return data.categories
 
-      .sort(
-        (a, b) =>
-          b.deviation_pct
-          - a.deviation_pct
-      );
+        .map((item) => ({
+
+          ...item,
+
+          chartDeviation:
+
+            Math.max(
+
+              Math.min(
+                item.deviation_pct,
+                250
+              ),
+
+              -100
+            ),
+        }))
+
+        .sort((a, b) => {
+
+          if (
+            a.deviation_pct > 0
+            &&
+            b.deviation_pct <= 0
+          ) return -1;
+
+          if (
+            b.deviation_pct > 0
+            &&
+            a.deviation_pct <= 0
+          ) return 1;
+
+          return (
+            Math.abs(b.deviation_pct)
+            -
+            Math.abs(a.deviation_pct)
+          );
+        });
 
     }, [data]);
 
-  const summary =
-    data?.summary;
+  const maxDeviation = Math.max(
+
+    ...categories.map((c) =>
+      Math.abs(c.chartDeviation)
+    ),
+    100
+  );
 
   //////////////////////////////////////////////////
   // TOOLTIP
   //////////////////////////////////////////////////
 
   function CustomTooltip({
-
     active,
     payload,
   }) {
 
     if (
       !active
-      || !payload?.length
+      ||
+      !payload
+      ||
+      !payload.length
     ) {
-
       return null;
     }
 
-    const item =
-      payload[0].payload;
+    const item = payload[0].payload;
 
     return (
 
@@ -269,97 +347,78 @@ export default function Performance() {
         style={{
 
           background:
-            theme.colors.chart.tooltipBg,
+            theme.colors.card,
 
           border:
             `1px solid ${theme.colors.border}`,
 
           borderRadius:
-            "10px",
+            styles.cardRadius,
 
-          padding:
-            "12px",
+          padding: "14px",
 
-          minWidth:
-            "220px",
+          minWidth: "220px",
         }}
       >
 
         <div
           style={{
 
+            ...theme.typography.subheading,
+
             color:
               theme.colors.textPrimary,
 
-            marginBottom:
-              "8px",
-
-            ...theme.typography.subheading,
+            marginBottom: "12px",
           }}
         >
-
           {item.category}
-
         </div>
 
         <div
           style={{
+
+            ...theme.typography.body,
 
             color:
               theme.colors.textSecondary,
 
-            ...theme.typography.body,
+            marginBottom: "6px",
           }}
         >
-
-          Budget:
-          {" "}
-          {formatINR(
-            item.budget_amount
-          )}
-
+          Budget: {formatINR(item.budget_amount)}
         </div>
 
         <div
           style={{
+
+            ...theme.typography.body,
 
             color:
               theme.colors.textSecondary,
 
-            ...theme.typography.body,
+            marginBottom: "10px",
           }}
         >
-
-          Actual:
-          {" "}
-          {formatINR(
-            item.actual_spent
-          )}
-
+          Actual: {formatINR(item.actual_spent)}
         </div>
 
         <div
           style={{
-
-            marginTop:
-              "8px",
-
-            color:
-
-              item.deviation_amount > 0
-
-              ? theme.colors.negative
-
-              : theme.colors.positive,
 
             ...theme.typography.amount,
+
+            color:
+
+              item.deviation_pct > 0
+
+                ? theme.colors.negative
+
+                : theme.colors.positive,
           }}
         >
-
-          {item.deviation_pct}%
-
+          {item.deviation_pct.toFixed(1)}%
         </div>
-
       </div>
     );
   }
@@ -376,15 +435,13 @@ export default function Performance() {
         style={{
 
           padding:
-            "24px",
+            styles.pagePadding,
 
           color:
             theme.colors.textPrimary,
         }}
       >
-
-        Loading performance...
-
+        Loading...
       </div>
     );
   }
@@ -393,9 +450,7 @@ export default function Performance() {
   // EMPTY
   //////////////////////////////////////////////////
 
-  if (
-    !categories.length
-  ) {
+  if (!data) {
 
     return (
 
@@ -403,21 +458,19 @@ export default function Performance() {
         style={{
 
           padding:
-            "32px",
+            styles.pagePadding,
 
           color:
-            theme.colors.textSecondary,
+            theme.colors.textPrimary,
         }}
       >
-
-        No budget data found.
-
+        No data available.
       </div>
     );
   }
 
   //////////////////////////////////////////////////
-  // PAGE
+  // UI
   //////////////////////////////////////////////////
 
   return (
@@ -426,234 +479,267 @@ export default function Performance() {
       style={{
 
         padding:
-          "24px",
+          styles.pagePadding,
 
-        display:
-          "flex",
+        background:
+          theme.colors.background,
 
-        flexDirection:
-          "column",
-
-        gap:
-          "24px",
+        minHeight:
+          "100vh",
       }}
     >
 
 
-      <div>
+      <div
+        style={{
 
-        <h1
+          display: "flex",
+
+          justifyContent:
+            "space-between",
+
+          alignItems:
+            "center",
+
+          marginBottom: "28px",
+        }}
+      >
+
+        <div>
+
+          <div
+            style={{
+
+              ...theme.typography.heading,
+
+              color:
+                theme.colors.textPrimary,
+
+              marginBottom: "8px",
+            }}
+          >
+            Budget Performance
+          </div>
+
+          <div
+            style={{
+
+              ...theme.typography.body,
+
+              color:
+                theme.colors.textSecondary,
+            }}
+          >
+            Budget vs actual spending analysis.
+          </div>
+        </div>
+
+        <select
+
+          value={selectedYear}
+
+          onChange={(e) => {
+
+            setSelectedYear(
+              Number(e.target.value)
+            );
+
+            setSelectedMonth(null);
+          }}
+
           style={{
+
+            background:
+              theme.colors.card,
+
+            border:
+              `1px solid ${theme.colors.border}`,
+
+            borderRadius:
+              styles.buttonRadius,
+
+            padding:
+              "10px 14px",
 
             color:
               theme.colors.textPrimary,
 
-            marginBottom:
-              "8px",
-
-            ...theme.typography.heading,
-          }}
-        >
-
-          Budget Performance
-
-        </h1>
-
-        <div
-          style={{
-
-            color:
-              theme.colors.textSecondary,
+            outline: "none",
 
             ...theme.typography.body,
           }}
         >
 
-          Monitor spending efficiency,
-          budget drift,
-          and category overruns.
+          {years.map((year) => (
 
-        </div>
-
+            <option
+              key={year}
+              value={year}
+            >
+              {year}
+            </option>
+          ))}
+        </select>
       </div>
 
 
       <div
         style={{
 
-          display:
-            "flex",
+          display: "flex",
 
-          gap:
-            "10px",
+          gap: "10px",
 
-          flexWrap:
-            "wrap",
+          flexWrap: "wrap",
+
+          marginBottom: "28px",
         }}
       >
 
-        {[
-          {
-            key:
-              "current_month",
+        <button
 
-            label:
-              "Current Month",
-          },
+          onClick={() =>
+            setSelectedMonth(null)
+          }
 
-          {
-            key:
-              "previous_month",
+          style={{
 
-            label:
-              "Previous Month",
-          },
+            background:
 
-          {
-            key:
-              "year",
+              selectedMonth === null
 
-            label:
-              "Current Year",
-          },
+                ? theme.colors.neutral
 
-        ].map((item) => (
+                : theme.colors.card,
+
+            color:
+
+              selectedMonth === null
+
+                ? "#FFFFFF"
+
+                : theme.colors.textSecondary,
+
+            border:
+              `1px solid ${theme.colors.border}`,
+
+            borderRadius:
+              styles.buttonRadius,
+
+            padding:
+              "10px 14px",
+
+            cursor: "pointer",
+
+            ...theme.typography.body,
+          }}
+        >
+          {selectedYear}
+        </button>
+
+        {activeMonths.map((month, index) => (
 
           <button
 
-            key={item.key}
+            key={month}
 
             onClick={() =>
-              setSelectedPeriod(
-                item.key
-              )
+              setSelectedMonth(index)
             }
 
             style={{
 
-              padding:
-                "8px 14px",
+              background:
 
-              borderRadius:
-                "10px",
+                selectedMonth === index
+
+                  ? theme.colors.neutral
+
+                  : theme.colors.card,
+
+              color:
+
+                selectedMonth === index
+
+                  ? "#FFFFFF"
+
+                  : theme.colors.textSecondary,
 
               border:
                 `1px solid ${theme.colors.border}`,
 
-              background:
+              borderRadius:
+                styles.buttonRadius,
 
-                selectedPeriod
-                === item.key
+              padding:
+                "10px 14px",
 
-                ? theme.colors.neutralDim
-
-                : theme.colors.card,
-
-              color:
-
-                selectedPeriod
-                === item.key
-
-                ? theme.colors.neutral
-
-                : theme.colors.textSecondary,
-
-              cursor:
-                "pointer",
+              cursor: "pointer",
 
               ...theme.typography.body,
             }}
           >
-
-            {item.label}
-
+            {month}
           </button>
         ))}
       </div>
 
+
       <div
         style={{
 
-          display:
-            "grid",
+          display: "grid",
 
           gridTemplateColumns:
-            "repeat(auto-fit, minmax(220px, 1fr))",
+            "repeat(auto-fit, minmax(180px, 1fr))",
 
-          gap:
-            "16px",
+          gap: "16px",
+
+          marginBottom: "24px",
         }}
       >
 
         {[
           {
-            label:
-              "Total Budget",
-
-            value:
-              formatINR(
-                summary.total_budget
-              ),
-
+            label: "Total Budget",
+            value: formatINR(
+              data.summary.total_budget
+            ),
             color:
               theme.colors.textPrimary,
           },
-
           {
-            label:
-              "Actual Spend",
-
-            value:
-              formatINR(
-                summary.total_actual
-              ),
-
-            color:
-
-              summary.total_actual
-              >
-              summary.total_budget
-
-              ? theme.colors.negative
-
-              : theme.colors.positive,
-          },
-
-          {
-            label:
-              "Over Budget",
-
-            value:
-              `${summary.over_budget_count}`,
-
+            label: "Actual Spend",
+            value: formatINR(
+              data.summary.total_actual
+            ),
             color:
               theme.colors.negative,
           },
-
           {
-            label:
-              "Net Deviation",
-
+            label: "Over Budget",
             value:
-              formatINR(
-                summary.total_deviation
-              ),
-
+              data.summary.over_budget_count,
+            color:
+              theme.colors.negative,
+          },
+          {
+            label: "Net Deviation",
+            value: formatINR(
+              data.summary.total_deviation
+            ),
             color:
 
-              summary.total_deviation > 0
+              data.summary.total_deviation > 0
 
-              ? theme.colors.negative
+                ? theme.colors.negative
 
-              : theme.colors.positive,
+                : theme.colors.positive,
           },
-
         ].map((card) => (
 
           <div
-
             key={card.label}
-
             style={{
 
               background:
@@ -663,47 +749,43 @@ export default function Performance() {
                 `1px solid ${theme.colors.border}`,
 
               borderRadius:
-                "14px",
+                styles.cardRadius,
 
-              padding:
-                "18px",
+              padding: "18px",
             }}
           >
 
             <div
               style={{
 
+                ...theme.typography.caption,
+
                 color:
                   theme.colors.textSecondary,
 
-                marginBottom:
-                  "10px",
-
-                ...theme.typography.caption,
+                marginBottom: "10px",
               }}
             >
-
               {card.label}
-
             </div>
 
             <div
               style={{
 
+                ...theme.typography.amount,
+
+                fontSize: "18px",
+
                 color:
                   card.color,
-
-                ...theme.typography.heading,
               }}
             >
-
               {card.value}
-
             </div>
-
           </div>
         ))}
       </div>
+
 
       <div
         style={{
@@ -715,13 +797,11 @@ export default function Performance() {
             `1px solid ${theme.colors.border}`,
 
           borderRadius:
-            "14px",
+            styles.cardRadius,
 
-          padding:
-            "18px",
+          padding: "20px",
 
-          height:
-            "650px",
+          height: "560px",
         }}
       >
 
@@ -731,38 +811,82 @@ export default function Performance() {
         >
 
           <BarChart
+
             data={categories}
+
             layout="vertical"
+
+            barCategoryGap="38%"
+
             margin={{
-              top: 10,
-              right: 20,
-              left: 20,
-              bottom: 10,
+              top: 8,
+              right: 24,
+              left: 0,
+              bottom: 8,
             }}
           >
 
             <CartesianGrid
+
               stroke={
                 theme.colors.chart.grid
               }
+
               horizontal={false}
+
+              strokeDasharray="2 6"
             />
 
             <XAxis
+
               type="number"
-              domain={[-100, 100]}
-              stroke={
-                theme.colors.chart.axis
-              }
+
+              domain={[
+                -100,
+                maxDeviation,
+              ]}
+
+              tick={{
+
+                fill:
+                  theme.colors.textMuted,
+
+                fontFamily:
+                  theme.typography.mono.fontFamily,
+
+                fontSize: 11,
+              }}
+
+              tickLine={false}
+
+              axisLine={{
+                stroke:
+                  theme.colors.border,
+              }}
             />
 
             <YAxis
+
               dataKey="category"
+
               type="category"
-              width={120}
-              stroke={
-                theme.colors.chart.axis
-              }
+
+              width={140}
+
+              tick={{
+
+                fill:
+                  theme.colors.textSecondary,
+
+                fontFamily:
+                  theme.typography.body.fontFamily,
+
+                fontSize: 13,
+              }}
+
+              tickLine={false}
+
+              axisLine={false}
             />
 
             <Tooltip
@@ -770,7 +894,9 @@ export default function Performance() {
             />
 
             <ReferenceLine
+
               x={0}
+
               stroke={
                 theme.colors.border
               }
@@ -778,42 +904,38 @@ export default function Performance() {
 
             <Bar
 
-              dataKey="deviation_pct"
+              dataKey="chartDeviation"
 
-              radius={[0, 4, 4, 0]}
+              barSize={18}
+
+              radius={[4,4,4,4]}
 
               onClick={(data) => {
 
                 setSelectedCategory(
-                    data.category
+                  data.category
                 );
-                }}
+              }}
 
-              fill={
-                theme.colors.chart.barPrimary
-              }
-
-             shape={(props) => {
+              shape={(props) => {
 
                 const {
-
-                    x,
-                    y,
-                    width,
-                    height,
-                    payload,
-
+                  x,
+                  y,
+                  width,
+                  height,
+                  payload,
                 } = props;
 
                 const isNegative =
-                    width < 0;
+                  width < 0;
 
                 return (
 
-                    <rect
+                  <rect
 
                     x={
-                        isNegative
+                      isNegative
                         ? x + width
                         : x
                     }
@@ -828,559 +950,35 @@ export default function Performance() {
 
                     fill={
 
-                        payload.deviation_pct > 0
+                      payload.deviation_pct > 0
 
                         ? theme.colors.negative
 
                         : theme.colors.positive
                     }
 
+                    stroke="rgba(255,255,255,0.04)"
+
+                    strokeWidth={1}
+
                     opacity={
 
-                        selectedCategory
-                        &&
-                        selectedCategory
-                        !== payload.category
+                      selectedCategory
+                      &&
+                      selectedCategory
+                      !== payload.category
 
                         ? 0.25
 
                         : 1
                     }
-                    />
+                  />
                 );
-                }}
+              }}
             />
-
           </BarChart>
-
         </ResponsiveContainer>
-
       </div>
-
-
-    {selectedCategory && (
-
-    <div
-        style={{
-
-        position: "fixed",
-
-        top: 0,
-        right: 0,
-
-        width: "480px",
-
-        height: "100vh",
-
-        background:
-            theme.colors.card,
-
-        borderLeft:
-            `1px solid ${theme.colors.border}`,
-
-        padding: "24px",
-
-        overflowY: "auto",
-
-        zIndex: 999,
-
-        boxShadow:
-            "-10px 0 40px rgba(0,0,0,0.45)",
-        }}
-    >
-
-        <div
-        style={{
-
-            display: "flex",
-
-            justifyContent:
-            "space-between",
-
-            alignItems:
-            "center",
-
-            marginBottom:
-            "24px",
-        }}
-        >
-
-        <div>
-
-            <div
-            style={{
-
-                color:
-                theme.colors.textPrimary,
-
-                marginBottom:
-                "6px",
-
-                ...theme.typography.heading,
-            }}
-            >
-
-            {selectedCategory}
-
-            </div>
-
-            <div
-            style={{
-
-                color:
-                theme.colors.textSecondary,
-
-                ...theme.typography.body,
-            }}
-            >
-
-            Category performance analysis
-
-            </div>
-
-        </div>
-
-        <button
-
-            onClick={() =>
-            setSelectedCategory(null)
-            }
-
-            style={{
-
-            background:
-                "transparent",
-
-            border:
-                "none",
-
-            cursor:
-                "pointer",
-
-            color:
-                theme.colors.textSecondary,
-
-            fontSize:
-                "22px",
-            }}
-        >
-
-            ×
-
-        </button>
-
-        </div>
-
-
-        {(() => {
-
-        const categoryData =
-            categories.find(
-            (c) =>
-                c.category
-                === selectedCategory
-            );
-
-        if (!categoryData)
-            return null;
-
-        return (
-
-            <div
-            style={{
-
-                display:
-                "grid",
-
-                gridTemplateColumns:
-                "1fr 1fr",
-
-                gap:
-                "12px",
-
-                marginBottom:
-                "24px",
-            }}
-            >
-
-            {[
-                {
-                label:
-                    "Budget",
-
-                value:
-                    formatINR(
-                    categoryData.budget_amount
-                    ),
-
-                color:
-                    theme.colors.textPrimary,
-                },
-
-                {
-                label:
-                    "Actual",
-
-                value:
-                    formatINR(
-                    categoryData.actual_spent
-                    ),
-
-                color:
-
-                    categoryData.deviation_amount > 0
-
-                    ? theme.colors.negative
-
-                    : theme.colors.positive,
-                },
-
-                {
-                label:
-                    "Deviation",
-
-                value:
-                    `${categoryData.deviation_pct}%`,
-
-                color:
-
-                    categoryData.deviation_amount > 0
-
-                    ? theme.colors.negative
-
-                    : theme.colors.positive,
-                },
-
-                {
-                label:
-                    "Projection",
-
-                value:
-                    formatINR(
-                    categoryData.projected_month_end
-                    ),
-
-                color:
-                    theme.colors.neutral,
-                },
-
-            ].map((item) => (
-
-                <div
-
-                key={item.label}
-
-                style={{
-
-                    background:
-                    theme.colors.cardAlt,
-
-                    border:
-                    `1px solid ${theme.colors.border}`,
-
-                    borderRadius:
-                    "12px",
-
-                    padding:
-                    "14px",
-                }}
-                >
-
-                <div
-                    style={{
-
-                    color:
-                        theme.colors.textSecondary,
-
-                    marginBottom:
-                        "6px",
-
-                    ...theme.typography.caption,
-                    }}
-                >
-
-                    {item.label}
-
-                </div>
-
-                <div
-                    style={{
-
-                    color:
-                        item.color,
-
-                    ...theme.typography.subheading,
-                    }}
-                >
-
-                    {item.value}
-
-                </div>
-
-                </div>
-            ))}
-            </div>
-        );
-        })()}
-
-        <div
-        style={{
-
-            background:
-            theme.colors.cardAlt,
-
-            border:
-            `1px solid ${theme.colors.border}`,
-
-            borderRadius:
-            "14px",
-
-            padding:
-            "18px",
-
-            marginBottom:
-            "24px",
-        }}
-        >
-
-        <div
-            style={{
-
-            color:
-                theme.colors.textPrimary,
-
-            marginBottom:
-                "16px",
-
-            ...theme.typography.subheading,
-            }}
-        >
-
-            Spending Trend
-
-        </div>
-
-        <div
-            style={{
-            height: "260px",
-            }}
-        >
-
-            <ResponsiveContainer
-            width="100%"
-            height="100%"
-            >
-
-            <BarChart
-                data={trendData}
-            >
-
-                <CartesianGrid
-                stroke={
-                    theme.colors.chart.grid
-                }
-                vertical={false}
-                />
-
-                <XAxis
-                dataKey="month"
-                stroke={
-                    theme.colors.chart.axis
-                }
-                />
-
-                <YAxis
-                stroke={
-                    theme.colors.chart.axis
-                }
-                />
-
-                <Tooltip
-                contentStyle={{
-                    background:
-                    theme.colors.chart.tooltipBg,
-
-                    border:
-                    `1px solid ${theme.colors.border}`,
-
-                    borderRadius:
-                    "10px",
-
-                    color:
-                    theme.colors.textPrimary,
-                }}
-                />
-
-                <Bar
-
-                dataKey="amount"
-
-                radius={[4,4,0,0]}
-
-                fill={
-                    theme.colors.chart.barPrimary
-                }
-                />
-
-            </BarChart>
-
-            </ResponsiveContainer>
-
-        </div>
-
-        </div>
-
-            <div
-            style={{
-
-                background:
-                theme.colors.cardAlt,
-
-                border:
-                `1px solid ${theme.colors.border}`,
-
-                borderRadius:
-                "14px",
-
-                overflow:
-                "hidden",
-            }}
-            >
-
-            <div
-                style={{
-
-                padding:
-                    "16px",
-
-                borderBottom:
-                    `1px solid ${theme.colors.border}`,
-
-                color:
-                    theme.colors.textPrimary,
-
-                ...theme.typography.subheading,
-                }}
-            >
-
-                Monthly Breakdown
-
-            </div>
-
-            <table
-                style={{
-
-                width:
-                    "100%",
-
-                borderCollapse:
-                    "collapse",
-                }}
-            >
-
-                <thead>
-
-                <tr>
-
-                    {[
-                    "Month",
-                    "Spend",
-                    ].map((head) => (
-
-                    <th
-
-                        key={head}
-
-                        style={{
-
-                        textAlign:
-                            "left",
-
-                        padding:
-                            "12px 16px",
-
-                        color:
-                            theme.colors.textSecondary,
-
-                        borderBottom:
-                            `1px solid ${theme.colors.border}`,
-
-                        ...theme.typography.caption,
-                        }}
-                    >
-
-                        {head}
-
-                    </th>
-                    ))}
-                </tr>
-
-                </thead>
-
-                <tbody>
-
-                {trendData.map((row) => (
-
-                    <tr
-                    key={row.month}
-                    >
-
-                    <td
-                        style={{
-
-                        padding:
-                            "14px 16px",
-
-                        color:
-                            theme.colors.textPrimary,
-
-                        borderBottom:
-                            `1px solid ${theme.colors.border}`,
-
-                        ...theme.typography.body,
-                        }}
-                    >
-
-                        {row.month}
-
-                    </td>
-
-                    <td
-                        style={{
-
-                        padding:
-                            "14px 16px",
-
-                        color:
-                            theme.colors.textPrimary,
-
-                        borderBottom:
-                            `1px solid ${theme.colors.border}`,
-
-                        ...theme.typography.amount,
-                        }}
-                    >
-
-                        {formatINR(
-                        row.amount
-                        )}
-
-                    </td>
-
-                    </tr>
-                ))}
-
-                </tbody>
-
-            </table>
-
-            </div>
-
-        </div>
-        )}
-
-
-
     </div>
   );
 }
