@@ -160,3 +160,108 @@ getTransactionCategories() {
     `${API_BASE}/transactions/categories`
   );
 }
+
+//////////////////////////////////////////////////
+//////////// GET BUDGET DEVIATION ////////////////
+//////////////////////////////////////////////////
+
+export async function getBudgetDeviation({
+
+  startDate,
+
+  endDate,
+
+  budgetType,
+
+  category,
+}) {
+
+  const params = new URLSearchParams();
+
+  if (startDate) {
+
+    params.append(
+      "start_date",
+      startDate
+    );
+  }
+
+  if (endDate) {
+
+    params.append(
+      "end_date",
+      endDate
+    );
+  }
+
+  if (budgetType) {
+
+    params.append(
+      "budget_type",
+      budgetType
+    );
+  }
+
+  if (category) {
+
+    params.append(
+      "category",
+      category
+    );
+  }
+
+  return await fetchWithAuth(
+
+    `${API_BASE}/budget/deviation?${params.toString()}`
+  );
+}
+
+
+//////////////////////////////////////////////////
+//////// GET BUDGET CATEGORY TREND ///////////////
+//////////////////////////////////////////////////
+
+export async function getBudgetCategoryTrend({
+
+  category,
+
+  startDate,
+
+  endDate,
+}) {
+
+  if (!category) {
+
+    throw new Error(
+      "category is required"
+    );
+  }
+
+  const params = new URLSearchParams();
+
+  params.append(
+    "category",
+    category
+  );
+
+  if (startDate) {
+
+    params.append(
+      "start_date",
+      startDate
+    );
+  }
+
+  if (endDate) {
+
+    params.append(
+      "end_date",
+      endDate
+    );
+  }
+
+  return await fetchWithAuth(
+
+    `${API_BASE}/dashboard/category-trend?${params.toString()}`
+  );
+}

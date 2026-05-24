@@ -1,6 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
+from datetime import date, datetime, time, timezone
+from calendar import monthrange
+from models.transaction import BankTransaction
+from services.date_utils import resolve_date_range
 
 from database import get_db
 
@@ -396,4 +401,420 @@ async def get_budget_target(
 
         "savings_rate_target":
             target.savings_rate_target
+    }
+
+##################################################
+############### GET /budget/deviation ############
+##################################################
+
+@router.get("/budget/deviation")
+async def get_budget_deviation(
+
+    start_date: str | None = Query(None),
+
+    end_date: str | None = Query(None),
+
+    budget_type: str | None = Query(
+        None,
+        description="monthly or annual"
+    ),
+
+    category: str | None = Query(None),
+
+    current_user: User = Depends(get_current_user),
+
+    db: AsyncSession = Depends(get_db)
+):
+
+    ##################################################
+    ######## RESOLVE DATE RANGE ######################
+    ##################################################
+
+    start, end = resolve_date_range(
+        start_date,
+        end_date
+    )
+
+    ##################################################
+    ######## DETERMINE VIEW TYPE #####################
+    ##################################################
+
+    resolved_budget_type = budget_type
+
+    if not resolved_budget_type:
+
+        if (
+            start.year == end.year
+            and
+            start.month == end.month
+        ):
+
+            resolved_budget_type = "monthly"
+
+        else:
+
+            resolved_budget_type = "annual"
+
+    ##################################################
+    ######## FETCH ACTIVE BUDGETS ####################
+    ##################################################
+
+    budget_query = (
+
+        select(Budget)
+
+        .where(
+            Budget.user_id
+            == current_user.id
+        )
+
+        .where(
+            Budget.is_deleted
+            == False
+        )
+
+        .where(
+            Budget.budget_type
+            == resolved_budget_type
+        )
+    )
+
+    if category:
+
+        budget_query = budget_query.where(
+            Budget.category == category
+        )
+
+    ##################################################
+    ######## MONTHLY FILTERING #######################
+    ##################################################
+
+    if resolved_budget_type == "monthly":
+
+        budget_query = (
+
+            budget_query
+
+            .where(
+                Budget.start_date <= start.date()
+            )
+
+            .where(
+                Budget.end_date >= end.date()
+            )
+        )
+
+    ##################################################
+    ######## ANNUAL FILTERING ########################
+    ##################################################
+
+    elif resolved_budget_type == "annual":
+
+        budget_query = (
+
+            budget_query
+
+            .where(
+                Budget.start_date <= start.date()
+            )
+
+            .where(
+                Budget.end_date >= end.date()
+            )
+        )
+
+    budget_result = await db.execute(
+        budget_query
+    )
+
+    budgets = budget_result.scalars().all()
+
+    ##################################################
+    ######## NO BUDGETS ##############################
+    ##################################################
+
+    if not budgets:
+
+        return {
+
+            "budget_type":
+                resolved_budget_type,
+
+            "summary": {
+
+                "total_budget": 0,
+
+                "total_actual": 0,
+
+                "total_deviation": 0,
+
+                "over_budget_count": 0,
+
+                "category_count": 0
+            },
+
+            "categories": []
+        }
+
+    ##################################################
+    ######## FETCH TRANSACTIONS ######################
+    ##################################################
+
+    tx_query = (
+
+        select(BankTransaction)
+
+        .where(
+            BankTransaction.user_id
+            == current_user.id
+        )
+
+        .where(
+            BankTransaction.is_deleted
+            == False
+        )
+
+        .where(
+            BankTransaction.amount < 0
+        )
+
+        .where(
+            BankTransaction.transaction_type.in_([
+                "expense",
+                "loan repayment",
+                "infer"
+            ])
+        )
+
+        .where(
+            BankTransaction.recorded_at >= start
+        )
+
+        .where(
+            BankTransaction.recorded_at <= end
+        )
+    )
+
+    if category:
+
+        tx_query = tx_query.where(
+            BankTransaction.category
+            == category
+        )
+
+    tx_result = await db.execute(
+        tx_query
+    )
+
+    transactions = tx_result.scalars().all()
+
+    ##################################################
+    ######## CATEGORY SPEND MAP ######################
+    ##################################################
+
+    spend_map = {}
+
+    for tx in transactions:
+
+        tx_category = tx.category
+
+        if not tx_category:
+            continue
+
+        if tx_category not in spend_map:
+
+            spend_map[tx_category] = 0
+
+        spend_map[tx_category] += abs(
+            tx.amount or 0
+        )
+
+    ##################################################
+    ######## BUILD RESPONSE ##########################
+    ##################################################
+
+    rows = []
+
+    total_budget = 0
+    total_actual = 0
+    over_budget_count = 0
+
+    for budget in budgets:
+
+        actual_spent = round(
+
+            spend_map.get(
+                budget.category,
+                0
+            ),
+
+            2
+        )
+
+        budget_amount = round(
+            budget.amount,
+            2
+        )
+
+        deviation_amount = round(
+            actual_spent - budget_amount,
+            2
+        )
+
+        deviation_pct = 0
+
+        if budget_amount > 0:
+
+            deviation_pct = round(
+
+                (
+                    deviation_amount
+                    / budget_amount
+                ) * 100,
+
+                1
+            )
+
+        ##################################################
+        ######## STATUS ##################################
+        ##################################################
+
+        if deviation_amount > 0:
+
+            status = "over"
+
+            over_budget_count += 1
+
+        elif deviation_amount == 0:
+
+            status = "on_track"
+
+        else:
+
+            status = "under"
+
+        ##################################################
+        ######## MONTH PROJECTION ########################
+        ##################################################
+
+        projected_month_end = actual_spent
+
+        if resolved_budget_type == "monthly":
+
+            total_days = monthrange(
+                start.year,
+                start.month
+            )[1]
+
+            elapsed_days = max(
+                (
+                    datetime.utcnow().date()
+                    - start.date()
+                ).days + 1,
+                1
+            )
+
+            elapsed_days = min(
+                elapsed_days,
+                total_days
+            )
+
+            projected_month_end = round(
+
+                (
+                    actual_spent
+                    / elapsed_days
+                ) * total_days,
+
+                2
+            )
+
+        ##################################################
+        ######## RESPONSE ROW ############################
+        ##################################################
+
+        rows.append({
+
+            "category":
+                budget.category,
+
+            "budget_amount":
+                budget_amount,
+
+            "actual_spent":
+                actual_spent,
+
+            "deviation_amount":
+                deviation_amount,
+
+            "deviation_pct":
+                deviation_pct,
+
+            "projected_month_end":
+                projected_month_end,
+
+            "status":
+                status,
+
+            "budget_type":
+                budget.budget_type,
+
+            "start_date":
+                budget.start_date,
+
+            "end_date":
+                budget.end_date
+        })
+
+        total_budget += budget_amount
+
+        total_actual += actual_spent
+
+    ##################################################
+    ######## SORT ####################################
+    ##################################################
+
+    rows = sorted(
+
+        rows,
+
+        key=lambda x: x["deviation_pct"],
+
+        reverse=True
+    )
+
+    ##################################################
+    ######## SUMMARY #################################
+    ##################################################
+
+    total_deviation = round(
+        total_actual - total_budget,
+        2
+    )
+
+    return {
+
+        "budget_type":
+            resolved_budget_type,
+
+        "summary": {
+
+            "total_budget":
+                round(total_budget, 2),
+
+            "total_actual":
+                round(total_actual, 2),
+
+            "total_deviation":
+                total_deviation,
+
+            "over_budget_count":
+                over_budget_count,
+
+            "category_count":
+                len(rows)
+        },
+
+        "categories":
+            rows
     }

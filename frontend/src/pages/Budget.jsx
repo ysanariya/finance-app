@@ -946,7 +946,7 @@ const handleSaveBudgets =
 
 <BudgetSankeyChart
   budgets={savedBudgets}
-  monthlyIncome={ budgetTarget?.monthly_income_target || 0}
+  monthlyIncome={ budgetTarget?.monthly_income_target}
 />
 
 

@@ -16,6 +16,7 @@ import GlobalDateFilter from "./components/filters/GlobalDateFilter";
 
 import ReviewInbox from "./pages/ReviewInbox";
 import Budget from "./pages/Budget";
+import Performance from "./pages/Performance";
 
 import { theme } from "./theme/theme";
 
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: "Assets" },
   { label: "Liabilities" },
   { label: "Cash Flow" },
+  { label: "Performance" },
   { label: "Goals" },
   { label: "Transactions" },
   { label: "Rules" },
@@ -485,6 +487,10 @@ export default function App() {
 
         {activeTab === "Cash Flow" && (
           <Cashflow />
+        )}
+
+        {activeTab === "Performance" && (
+          <Performance />
         )}
 
         {activeTab === "Rules" && (
