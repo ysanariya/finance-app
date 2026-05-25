@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  FinSight — Design Token System
 //  Cool navy / dark blue finance theme
-//  Drop-in: import { theme } from './theme'
+//  Drop-in: import { theme } from '@/theme/theme.js'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const theme = {

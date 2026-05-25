@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { theme } from "@/theme/theme.js";
+
 export default function Login({ onLogin }) {
 
   const [isSignup, setIsSignup] =
@@ -107,20 +109,20 @@ export default function Login({ onLogin }) {
 
     padding: "10px 12px",
 
-    background: "#1F1D15",
+    background: theme.colors.background,
 
     border:
-      "0.5px solid #2A2720",
+      "0.5px solid theme.colors.border",
 
     borderRadius: "7px",
 
-    color: "#EDE8DF",
+    color: theme.colors.textPrimary,
 
-    fontSize: "13px",
+    fontSize: theme.typography.placeholder.fontSize,
 
     outline: "none",
 
-    fontFamily: "inherit",
+    fontFamily: theme.typography.placeholder.fontFamily,
 
     transition:
       "border-color 0.15s",
@@ -132,7 +134,7 @@ export default function Login({ onLogin }) {
       style={{
         minHeight: "100svh",
 
-        background: "#0C0B09",
+        background: theme.colors.background,
 
         display: "flex",
 
@@ -140,8 +142,7 @@ export default function Login({ onLogin }) {
 
         justifyContent: "center",
 
-        fontFamily:
-          "'Inter', system-ui, sans-serif",
+        fontFamily: theme.typography.placeholder.fontFamily,
 
         padding: "20px",
       }}
@@ -153,10 +154,10 @@ export default function Login({ onLogin }) {
 
           maxWidth: "340px",
 
-          background: "#181610",
+          background: theme.colors.sidebar,
 
           border:
-            "0.5px solid #2A2720",
+            "0.5px solid theme.colors.border",
 
           borderRadius: "12px",
 
@@ -172,7 +173,7 @@ export default function Login({ onLogin }) {
 
             fontWeight: "500",
 
-            color: "#EDE8DF",
+            color: theme.colors.textPrimary,
 
             letterSpacing: "-0.4px",
 
@@ -182,7 +183,7 @@ export default function Login({ onLogin }) {
           Fin
           <span
             style={{
-              color: "#3DB882",
+              color: theme.colors.textSecondary
             }}
           >
             Sight
@@ -193,7 +194,7 @@ export default function Login({ onLogin }) {
           style={{
             fontSize: "22px",
 
-            color: "#3D3A34",
+            color: theme.colors.positive,
 
             marginBottom: "24px",
           }}
@@ -226,7 +227,7 @@ export default function Login({ onLogin }) {
 
                 fontSize: "10px",
 
-                color: "#6B6560",
+                color: theme.colors.textSecondary,
 
                 letterSpacing:
                   "0.07em",
@@ -284,7 +285,7 @@ export default function Login({ onLogin }) {
 
         fontSize: "10px",
 
-        color: "#6B6560",
+        color: theme.colors.textSecondary,
 
         letterSpacing:
           "0.07em",
@@ -341,7 +342,7 @@ export default function Login({ onLogin }) {
 
                 fontSize: "10px",
 
-                color: "#6B6560",
+                color: theme.colors.textSecondary,
 
                 letterSpacing:
                   "0.07em",
@@ -397,7 +398,7 @@ export default function Login({ onLogin }) {
                 color: "#D95F4B",
 
                 background:
-                  "#D95F4B14",
+                  theme.colors.background,
 
                 border:
                   "0.5px solid #D95F4B30",
