@@ -298,11 +298,11 @@ async def execute_report_query(
         })
         
     # Sorting
-    if payload.sort_by == "amount":
-        data.sort(key=lambda x: x["value"], reverse=(payload.sort_order == "desc"))
+    if payload.split_by == "month":
+        data.sort(key=lambda x: x["label"], reverse=(payload.sort_order == "desc"))
     else:
         # Label/date sorting
-        data.sort(key=lambda x: x["label"], reverse=(payload.sort_order == "desc"))
+        data.sort(key=lambda x: x["value"], reverse=(payload.sort_order == "desc"))
         
     return {
         "type": "aggregated",

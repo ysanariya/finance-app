@@ -59,7 +59,7 @@ export default function WidgetContainer({ widget, isEditing, onRemove }) {
             transaction_type: queryParams.transaction_type || "expense",
             categories: queryParams.categories || null,
             split_by: queryParams.split_by || null,
-            sort_by: queryParams.sort_by || "amount",
+            sort_by: queryParams.sort_by || "date",
             sort_order: queryParams.sort_order || "desc"
           })
         });
@@ -99,7 +99,7 @@ export default function WidgetContainer({ widget, isEditing, onRemove }) {
     padding: "20px",
     display: "flex",
     flexDirection: "column",
-    height: "100%",
+    height: "300px",
     position: "relative",
     boxSizing: "border-box",
   };
@@ -129,7 +129,7 @@ export default function WidgetContainer({ widget, isEditing, onRemove }) {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: "200px"
+    minHeight: "100px"
   };
 
   const renderContent = () => {
@@ -144,6 +144,8 @@ export default function WidgetContainer({ widget, isEditing, onRemove }) {
     }
 
     const type = widget.type;
+	console.log(widget.type);
+	console.log(data);
 
     if (type === "summary_card") {
       const total = data.reduce((sum, item) => sum + (item.value || item.amount || 0), 0);
