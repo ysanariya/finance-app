@@ -28,6 +28,14 @@ const cardLabel = {
   marginBottom: "14px",
 };
 
+const periodStyle = {
+  color: theme.colors.textMuted,
+  fontFamily: theme.typography.caption.fontFamily,
+  fontSize: theme.typography.caption.fontSize,
+  marginBottom: "12px",
+  marginTop: "-8px",
+};
+
 const cellStyle = {
   padding: `${theme.table.cellPaddingV} ${theme.table.cellPaddingH}`,
   color: theme.table.cellColor,
@@ -36,10 +44,14 @@ const cellStyle = {
   lineHeight: theme.table.cellLineHeight,
 };
 
-export default function IncomeTable({ incomeByCategory }) {
+export default function IncomeTable({
+  incomeByCategory,
+  periodLabel,
+}) {
   return (
     <div style={card}>
       <div style={cardLabel}>Top Income Sources</div>
+      <div style={periodStyle}>{periodLabel}</div>
 
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>

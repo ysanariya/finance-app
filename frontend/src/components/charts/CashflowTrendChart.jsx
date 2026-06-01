@@ -39,10 +39,22 @@ const cardLabel = {
   marginBottom: "14px",
 };
 
-export default function CashflowTrendChart({ combinedCashflowTrend }) {
+const periodStyle = {
+  color: theme.colors.textMuted,
+  fontFamily: theme.typography.caption.fontFamily,
+  fontSize: theme.typography.caption.fontSize,
+  marginBottom: "12px",
+  marginTop: "-8px",
+};
+
+export default function CashflowTrendChart({
+  combinedCashflowTrend,
+  periodLabel,
+}) {
   return (
     <div style={{ ...card, gridColumn: "span 2" }}>
       <div style={cardLabel}>Cashflow Trend</div>
+      <div style={periodStyle}>{periodLabel}</div>
 
       <div style={{ height: 340 }}>
         <ResponsiveContainer width="100%" height="100%">

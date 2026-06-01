@@ -125,6 +125,9 @@ export const theme = {
     // Backgrounds — deep navy/charcoal, cold and sharp
     background: "#080B12",
     sidebar:    "#0A0D16",
+    // Added glass background token
+    glassCard: "rgba(15,20,30,0.6)", // semi-transparent dark glass
+    glassOverlay: "rgba(0,0,0,0.4)",
     card:       "#0F1420",
     cardAlt:    "#141926",
     border:     "#1E2535",

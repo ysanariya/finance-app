@@ -9,18 +9,24 @@ function getCategoryColor(category) {
   return c.cat[category.toLowerCase()] || c.textMuted;
 }
 
-export default function AssetAllocation() {
+export default function AssetAllocation({ date }) {
   const [data, setData]           = useState([]);
   const [hovered, setHovered]     = useState(null);
 
   // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const res = await fetchWithAuth("http://localhost:8000/assets/breakdown");
+      const query = date
+        ? `?date=${encodeURIComponent(date)}`
+        : "";
+
+      const res = await fetchWithAuth(
+        `http://localhost:8000/assets/breakdown${query}`,
+      );
       setData(res);
     }
     load();
-  }, []);
+  }, [date]);
 
   const total = data.reduce((sum, item) => sum + item.total, 0);
   const formatLakh = (val) => `₹${(val / 100000).toFixed(1)}L`;

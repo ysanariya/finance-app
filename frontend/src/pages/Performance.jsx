@@ -16,6 +16,7 @@ import {
 } from "recharts";
 
 import { theme } from "@/theme/theme.js";
+import { formatScreenDateRange } from "@/hooks/useScreenDateRange";
 
 import {
   getBudgetDeviation,
@@ -469,6 +470,16 @@ export default function Performance() {
     );
   }
 
+  const activeRange = buildDateRange();
+  const activeRangeLabel = formatScreenDateRange(
+    activeRange.startDate,
+    activeRange.endDate,
+  );
+  const activeBudgetType =
+    activeRange.budgetType === "annual"
+      ? "Annual"
+      : "Monthly";
+
   //////////////////////////////////////////////////
   // UI
   //////////////////////////////////////////////////
@@ -531,6 +542,16 @@ export default function Performance() {
             }}
           >
             Budget vs actual spending analysis.
+          </div>
+          <div
+            style={{
+              ...theme.typography.caption,
+              color:
+                theme.colors.textMuted,
+              marginTop: "6px",
+            }}
+          >
+            {activeBudgetType} view · {activeRangeLabel}
           </div>
         </div>
 
@@ -705,6 +726,8 @@ export default function Performance() {
             value: formatINR(
               data.summary.total_budget
             ),
+            meta:
+              activeBudgetType,
             color:
               theme.colors.textPrimary,
           },
@@ -713,6 +736,8 @@ export default function Performance() {
             value: formatINR(
               data.summary.total_actual
             ),
+            meta:
+              activeRangeLabel,
             color:
               theme.colors.negative,
           },
@@ -720,6 +745,8 @@ export default function Performance() {
             label: "Over Budget",
             value:
               data.summary.over_budget_count,
+            meta:
+              `${data.summary.category_count} categories`,
             color:
               theme.colors.negative,
           },
@@ -728,6 +755,8 @@ export default function Performance() {
             value: formatINR(
               data.summary.total_deviation
             ),
+            meta:
+              activeRangeLabel,
             color:
 
               data.summary.total_deviation > 0
@@ -767,6 +796,16 @@ export default function Performance() {
               }}
             >
               {card.label}
+            </div>
+            <div
+              style={{
+                ...theme.typography.caption,
+                color:
+                  theme.colors.textMuted,
+                marginBottom: "10px",
+              }}
+            >
+              {card.meta}
             </div>
 
             <div

@@ -37,11 +37,19 @@ const cardLabel = {
   marginBottom: "14px",
 };
 
+const periodStyle = {
+  color: theme.colors.textMuted,
+  fontFamily: theme.typography.caption.fontFamily,
+  fontSize: theme.typography.caption.fontSize,
+  marginTop: "-8px",
+};
+
 export default function CategoryTrendChart({
   selectedCategory,
   categoryTrend,
   categories,
   onCategoryChange,
+  periodLabel,
 }) {
   const totalCategorySpend = categoryTrend.reduce(
     (sum, item) => sum + (item.amount || 0),
@@ -77,7 +85,10 @@ export default function CategoryTrendChart({
           marginBottom: "14px",
         }}
       >
-        <div style={cardLabel}>{selectedCategory} Trend</div>
+        <div>
+          <div style={cardLabel}>{selectedCategory} Trend</div>
+          <div style={periodStyle}>{periodLabel}</div>
+        </div>
 
         <select
           value={selectedCategory}

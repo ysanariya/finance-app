@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../services/api";
 import { theme } from "../theme/theme";
-import { useDateFilter } from "../context/DateFilterContext";
+import ScreenPeriodControl from "../components/filters/ScreenPeriodControl";
+import { useScreenDateRange } from "../hooks/useScreenDateRange";
 
 const formatINR = (value) =>
   "₹" +
@@ -11,7 +12,10 @@ const formatINR = (value) =>
   });
 
 export default function ReviewInbox() {
-  const { filter } = useDateFilter();
+  const dateRange = useScreenDateRange(
+    "reviewInbox",
+    "current_financial_year",
+  );
 
   const [transactions, setTransactions]   = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -31,9 +35,7 @@ export default function ReviewInbox() {
     try {
       setLoading(true);
 
-      const params = new URLSearchParams();
-      if (filter?.start) params.append("start_date", filter.start);
-      if (filter?.end)   params.append("end_date",   filter.end);
+      const params = dateRange.queryParams;
 
       const query = params.toString();
 
@@ -51,8 +53,8 @@ export default function ReviewInbox() {
     }
   }
 
-  useEffect(() => { loadData(); }, [filter, page]);
-  useEffect(() => { setPage(1); }, [filter]);
+  useEffect(() => { loadData(); }, [dateRange.start, dateRange.end, page]);
+  useEffect(() => { setPage(1); }, [dateRange.start, dateRange.end]);
 
   // ── Rule helpers ──────────────────────────────────────────────────────────────
 
@@ -136,29 +138,51 @@ export default function ReviewInbox() {
     >
 
       {/* HEADER */}
-      <div style={{ marginBottom: "20px" }}>
-        <h1
-          style={{
-            margin:        0,
-            color:         theme.colors.textPrimary,
-            fontFamily:    theme.typography.heading.fontFamily,
-            fontSize:      theme.typography.heading.fontSize,
-            fontWeight:    theme.typography.heading.fontWeight,
-            letterSpacing: theme.typography.heading.letterSpacing,
-          }}
-        >
-          Review Inbox
-        </h1>
-        <div
-          style={{
-            marginTop:  "6px",
-            color:      theme.colors.textSecondary,
-            fontFamily: theme.typography.body.fontFamily,
-            fontSize:   theme.typography.body.fontSize,
-          }}
-        >
-          Transactions requiring review or classification
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          marginBottom: "20px",
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              margin:        0,
+              color:         theme.colors.textPrimary,
+              fontFamily:    theme.typography.heading.fontFamily,
+              fontSize:      theme.typography.heading.fontSize,
+              fontWeight:    theme.typography.heading.fontWeight,
+              letterSpacing: theme.typography.heading.letterSpacing,
+            }}
+          >
+            Review Inbox
+          </h1>
+          <div
+            style={{
+              marginTop:  "6px",
+              color:      theme.colors.textSecondary,
+              fontFamily: theme.typography.body.fontFamily,
+              fontSize:   theme.typography.body.fontSize,
+            }}
+          >
+            Transactions requiring review or classification
+          </div>
+          <div
+            style={{
+              marginTop: "6px",
+              color: theme.colors.textMuted,
+              fontFamily: theme.typography.caption.fontFamily,
+              fontSize: theme.typography.caption.fontSize,
+            }}
+          >
+            Reviewing: {dateRange.label}
+          </div>
         </div>
+
+        <ScreenPeriodControl range={dateRange} />
       </div>
 
       {/* KPI ROW */}

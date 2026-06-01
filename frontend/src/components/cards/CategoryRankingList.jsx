@@ -18,6 +18,14 @@ const cardLabel = {
   marginBottom: "14px",
 };
 
+const periodStyle = {
+  color: theme.colors.textMuted,
+  fontFamily: theme.typography.caption.fontFamily,
+  fontSize: theme.typography.caption.fontSize,
+  marginBottom: "12px",
+  marginTop: "-8px",
+};
+
 const formatINR = (value) => {
   return (
     "₹" +
@@ -32,10 +40,12 @@ export default function CategoryRankingList({
   categories,
   selectedCategory,
   onCategoryChange,
+  periodLabel,
 }) {
   return (
     <div style={card}>
       <div style={cardLabel}>Top Spending Categories</div>
+      <div style={periodStyle}>{periodLabel}</div>
 
       <div
         style={{

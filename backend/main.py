@@ -5,6 +5,9 @@ from routers import assets, auth, liabilities, dashboard, income, fixed_expense,
 from dotenv import load_dotenv
 from models.rule import TransactionRule
 from routers import rules, budget
+from models.dashboard_config import DashboardConfig, WidgetConfig
+from models.envelope_budget import BudgetGroup, CategoryGroupMapping, BudgetEnvelope
+from routers import custom_reports, envelope_budget, budget_template
 
 
 load_dotenv()
@@ -40,5 +43,9 @@ app.include_router(dashboard.router)
 app.include_router(rules.router)
 app.include_router(budget.router)
 app.include_router(export.router)
+app.include_router(budget_template.router)
+app.include_router(envelope_budget.router)
+app.include_router(custom_reports.router)
+
 
 
