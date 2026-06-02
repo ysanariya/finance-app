@@ -153,98 +153,103 @@ async def reclassify_transactions(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
- 
+
     user_id = current_user.id
- 
-    # Get all active rules ordered by priority
+
     rules_result = await db.execute(
         select(TransactionRule)
         .where(TransactionRule.is_active == True)
         .order_by(TransactionRule.priority.desc())
     )
- 
+
     rules = rules_result.scalars().all()
- 
-    # Get all transactions for this user
+
     tx_result = await db.execute(
         select(BankTransaction)
         .where(BankTransaction.user_id == user_id)
     )
- 
+
     transactions = tx_result.scalars().all()
- 
+
     updated_count = 0
     reclassified = []
- 
+
     for tx in transactions:
- 
-        # Normalise description the same way patterns are normalised at
-        # creation time — handles tabs, double-spaces, non-breaking spaces
-        # that come out of bank CSV exports and would silently break `in`
+
         description = " ".join(
             tx.description.strip().lower().split()
         )
- 
-        # Capture current values before reset (for results summary)
+
         prev_category = tx.category
         prev_merchant = tx.merchant
- 
-        # Default type from amount polarity
+
         if tx.amount > 0:
             tx.transaction_type = "income"
         else:
             tx.transaction_type = "expense"
- 
-        # Reset metadata
+
         tx.category = None
         tx.merchant = None
         tx.classification_source = "unclassified"
         tx.matched_rule_id = None
- 
-        # Apply rules
+
         for rule in rules:
- 
-            # Pattern is already normalised at creation time
+
             pattern = rule.pattern.lower()
- 
+
             matched = False
- 
+
             if rule.match_type == "contains":
                 matched = pattern in description
+
             elif rule.match_type == "exact":
                 matched = pattern == description
- 
+
             if matched:
+
                 tx.category = rule.category
                 tx.merchant = rule.merchant
- 
-                # Only override transaction_type when explicitly set;
-                # "infer" means keep the polarity-based default above
-                if rule.transaction_type and rule.transaction_type != "infer":
-                    tx.transaction_type = rule.transaction_type
- 
+
+                if (
+                    rule.transaction_type
+                    and rule.transaction_type != "infer"
+                ):
+                    tx.transaction_type = (
+                        rule.transaction_type
+                    )
+
                 tx.classification_source = "rule"
                 tx.matched_rule_id = rule.id
-                updated_count += 1
- 
-                reclassified.append({
-                    "date":         str(tx.recorded_at.date()),
-                    "description":  tx.description,
-                    "old_category": prev_category,
-                    "new_category": rule.category,
-                    "old_merchant": prev_merchant,
-                    "new_merchant": rule.merchant,
-                    "matched_rule": rule.pattern,
-                    "amount":       float(tx.amount),
-                })
- 
+
+                changed = (
+                    prev_category != rule.category
+                    or prev_merchant != rule.merchant
+                )
+
+                if changed:
+
+                    updated_count += 1
+
+                    reclassified.append({
+                        "date": str(
+                            tx.recorded_at.date()
+                        ),
+                        "description": tx.description,
+                        "old_category": prev_category,
+                        "new_category": rule.category,
+                        "old_merchant": prev_merchant,
+                        "new_merchant": rule.merchant,
+                        "matched_rule": rule.pattern,
+                        "amount": float(tx.amount),
+                    })
+
                 break
- 
+
     await db.commit()
- 
+
     return {
-        "message":      "Reclassification complete",
-        "updated":      updated_count,
+        "message": "Reclassification complete",
+        "updated": updated_count,
         "reclassified": reclassified,
     }
  
