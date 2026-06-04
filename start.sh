@@ -9,6 +9,7 @@ tell application "Terminal"
     do script "
     cd '"$(pwd)"'/backend &&
     source venv/bin/activate &&
+    alembic upgrade head &&
     uvicorn main:app --reload
     "
 end tell

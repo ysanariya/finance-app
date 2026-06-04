@@ -1,10 +1,16 @@
 from fastapi import FastAPI
 from database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
-from routers import assets, auth, liabilities, dashboard, income, fixed_expense, transaction, export
+from routers import auth, transaction, rules, persons, accounts
 from dotenv import load_dotenv
-from models.rule import TransactionRule
-from routers import rules, budget
+
+from models.user import User
+from models.household import Household
+from models.household_member import HouseholdMember
+from models.person import Person
+from models.account import Account
+from models.account_owner import AccountOwner
+from models.imported_transaction import ImportedTransaction
 
 
 load_dotenv()
@@ -31,14 +37,9 @@ async def startup():
 #Routers for all functions
 
 app.include_router(auth.router)
-app.include_router(assets.router)
-app.include_router(liabilities.router)
-app.include_router(income.router)
-app.include_router(fixed_expense.router)
+app.include_router(persons.router)
+app.include_router(accounts.router)
 app.include_router(transaction.router)
-app.include_router(dashboard.router)
 app.include_router(rules.router)
-app.include_router(budget.router)
-app.include_router(export.router)
 
 

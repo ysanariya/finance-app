@@ -2,20 +2,24 @@ from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime, timezone
 from database import Base
 
-class User(Base):
-    __tablename__ = "users"
+class Household(Base):
 
-    id = Column(Integer, primary_key=True, index=True)
+    __tablename__ = "households"
 
-    email = Column(
+    id = Column(
+        Integer,
+        primary_key=True
+    )
+
+    name = Column(
         String,
-        unique=True,
         nullable=False
     )
 
-    password_hash = Column(
+    base_currency = Column(
         String,
-        nullable=False
+        nullable=False,
+        default="INR"
     )
 
     created_at = Column(

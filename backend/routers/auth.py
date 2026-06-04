@@ -9,6 +9,8 @@ from schemas.user import UserCreate, UserLogin
 from services.auth_service import hash_password, verify_password, create_access_token, verify_token
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import aliased
+from models.household import Household
+from models.household_member import HouseholdMember
 
 ############################
 ## Registration and login ##
@@ -17,16 +19,76 @@ from sqlalchemy.orm import aliased
 router = APIRouter()
 
 @router.post("/register")
-async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    new_user = User(
-        name=user.name,
-        email=user.email,
-        password_hash=hash_password(user.password)
+async def register(
+    user: UserCreate,
+    db: AsyncSession = Depends(get_db)
+):
+
+    existing = await db.execute(
+        select(User).where(
+            User.email == user.email
+        )
+    )
+
+    if existing.scalar_one_or_none():
+
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
         )
 
+    new_user = User(
+
+        email=user.email,
+
+        password_hash=hash_password(
+            user.password
+        )
+    )
+
     db.add(new_user)
+
+    await db.flush()
+
+    household_name = (
+        user.email.split("@")[0]
+        .replace(".", " ")
+        .title()
+        + " Household"
+    )
+
+    household = Household(
+
+        name=household_name,
+
+        base_currency="INR"
+    )
+
+    db.add(household)
+
+    await db.flush()
+
+    membership = HouseholdMember(
+
+        household_id=household.id,
+
+        user_id=new_user.id,
+
+        role="OWNER"
+    )
+
+    db.add(membership)
+
     await db.commit()
-    return {"message": "User created successfully for you"}
+
+    return {
+
+        "message":
+            "User created successfully",
+
+        "household_id":
+            household.id
+    }
 
 @router.post("/login")
 async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
