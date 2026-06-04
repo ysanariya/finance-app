@@ -1,336 +1,277 @@
-# Finance App
+# Ledger
 
-A personal finance operating system built using **FastAPI + React**, designed for deep visibility into cashflow, budgeting, spending behavior, and long-term financial trajectory.
+A household-first personal finance system built on double-entry accounting.
 
-The system prioritizes:
+Most budgeting apps answer:
 
-* structured financial modeling
-* auditability
-* historical tracking
-* extensible financial analytics
+> "Where did my money go?"
 
-instead of shallow dashboard metrics.
+Ledger is designed to answer:
 
+> "What actually happened to my money?"
 
-# Core Philosophy
+---
 
-Most finance apps optimize for:
+## Why I Built This
 
-* visual polish
-* oversimplified summaries
-* hidden calculations
-* manual categorization chaos
+After trying several personal finance tools, I kept running into the same problems:
 
-This project optimizes for:
+* Balances were stored directly and drifted over time
+* Transfers showed up as expenses
+* Joint finances were difficult to model
+* Investments, loans and credit cards felt like second-class citizens
+* Historical data became difficult to trust
 
-```text
-clarity > convenience
-financial modeling > spreadsheets
-historical traceability > mutable state
-system architecture > feature bloat
-```
+Rather than building another budgeting application, Ledger aims to model financial reality as accurately as possible.
 
+Every balance should be explainable.
 
-# Current Capabilities
+Every report should be reproducible.
 
-## Authentication
+Every transaction should have a traceable accounting impact.
 
-* JWT-based authentication
-* Protected API routes
-* Automatic invalid-token logout flow
+---
 
+## Core Principles
 
-# Transactions Engine
+### 1. Imported Data Is Sacred
 
-## Features
+Bank statements are source-of-truth data.
 
-* Transaction ingestion
-* Merchant tracking
-* Categorization pipeline
-* Rule-based classification architecture
-* Category normalization
-* Historical transaction persistence
+Imported transactions are never rewritten or manipulated.
 
-## Architecture
-
-Transactions act as the system's canonical financial event layer.
-
-Everything derives from transactions:
-
-* budgets
-* spending analytics
-* category trends
-* future scoring systems
-
-
-# Budgeting System
-
-## Features
-
-* Monthly budgeting
-* Annual budgeting
-* Date-window budgeting
-* Budget version history
-* Conflict-aware budget updates
-* Immutable budget tracking architecture
-
-## Budget Architecture
-
-Budgets are modeled as:
+Instead:
 
 ```text
-financial policies
+Bank Statement
+      ↓
+Imported Transaction
+      ↓
+Classification
+      ↓
+Ledger Posting
 ```
 
-—not mutable spreadsheet rows.
+This allows the accounting engine to evolve without losing the original financial record.
 
-Updating a budget:
+---
 
-* archives previous version (`is_deleted = True`)
-* inserts new active version
-* preserves historical budget evolution
+### 2. Accounts Do Not Store Balances
+
+Balances are derived.
+
+```text
+Current Balance
+    =
+Snapshot Balance
+    +
+Ledger Activity Since Snapshot
+```
+
+This eliminates balance drift and keeps calculations auditable.
+
+---
+
+### 3. Every Transaction Must Balance
+
+Ledger uses double-entry accounting.
+
+Example:
+
+Salary Credit
+
+```text
+Debit   HDFC Salary Account     ₹100,000
+Credit  Salary Income           ₹100,000
+```
+
+Example:
+
+Swiggy Order
+
+```text
+Debit   Food Expense            ₹250
+Credit  HDFC Salary Account     ₹250
+```
+
+Every transaction must balance to zero.
+
+Always.
+
+---
+
+### 4. Households Come First
+
+Most finance apps are designed around a single user.
+
+Ledger is designed around households.
+
+```text
+Household
+│
+├── Yash
+│   ├── HDFC Salary Account
+│   ├── SBI Loan
+│   └── HDFC Securities
+│
+└── Divya
+    ├── Savings Account
+    └── Zerodha
+```
 
 This enables:
 
-* historical budget trend analysis
-* future projections
-* budget drift analytics
-* auditability
+* Shared finances
+* Individual finances
+* Joint ownership
+* Household reporting
+* Future equity calculations
 
+---
 
-## Budget Validation Rules
+### 5. Transfers Are Not Spending
 
-* Categories are sourced from classified transaction categories
-* Free-text categories are disallowed
-* Only one active budgeting strategy per category
-* Budget conflicts trigger confirmation workflows
+Moving money between accounts should not inflate expenses.
 
+Examples:
 
-# Dashboard
+```text
+HDFC Savings → SBI Savings
+HDFC Savings → Credit Card Payment
+HDFC Savings → Cash Wallet
+Personal Account → Joint Account
+```
 
-## Current Widgets
+These change liquidity.
 
-* Net Worth Trend
-* Cashflow Trend
-* Asset Allocation
-* KPI Summary Cards
-* Category Rankings
-* Spending Trends
-* Budget Viewer
+They do not change net worth.
 
+They do not affect spending reports.
 
-# Financial Modeling Concepts
+They do not consume budget allocations.
 
-## Event-Sourced Thinking
+---
 
-The system distinguishes between:
+### 6. Investments Are Assets, Not Expenses
 
-| Type           | Modeling Strategy |
-| -------------- | ----------------- |
-| Transactions   | Event-based       |
-| Budgets        | Versioned policy  |
-| Fixed expenses | Rule-based        |
-| Net worth      | Derived state     |
+Buying equity is not spending.
 
-This minimizes redundant storage and enables historical reconstruction.
+Example:
 
+```text
+Buy Infosys Shares
+```
 
-# Tech Stack
+Accounting impact:
 
-## Backend
+```text
+Investment Asset    +₹100,000
+Cash                -₹100,000
+```
+
+However:
+
+```text
+Brokerage
+STT
+GST
+Exchange Charges
+```
+
+are real expenses and are tracked separately.
+
+This distinction is critical for accurate investment reporting.
+
+---
+
+## Architecture
+
+Current architecture:
+
+```text
+User
+│
+└── Household
+    │
+    ├── Person
+    │
+    ├── Account
+    │
+    └── ImportedTransaction
+```
+
+Planned architecture:
+
+```text
+ImportedTransaction
+          │
+          ▼
+    Posting Engine
+          │
+          ▼
+      Transaction
+          │
+          ▼
+      LedgerEntry
+          │
+          ▼
+       Snapshots
+          │
+          ▼
+   Reporting Layer
+```
+
+---
+
+## Technology
+
+### Backend
 
 * FastAPI
-* SQLAlchemy Async ORM
+* SQLAlchemy
 * SQLite
-* JWT Authentication
-* Pydantic
+* Alembic
 
+### Frontend
 
-## Frontend
-
-* React (Vite)
-* Recharts
-* Context API
-* Custom theme architecture
-* Modular component system
-
-
-# Frontend Architecture
-
-```text
-src/
-├── components/
-│   ├── cards/
-│   ├── charts/
-│   ├── filters/
-│   ├── forms/
-│   └── tables/
-│
-├── pages/
-├── services/
-├── utils/
-├── context/
-└── theme/
-```
-
-
-# Backend Architecture
-
-```text
-backend/
-├── routers/
-├── models/
-├── schemas/
-├── services/
-└── auth/
-```
-
-
-# Setup
-
-# 1. Clone Repository
-
-```bash
-git clone https://github.com/ysanariya/finance-app.git
-cd finance-app
-```
+* React
+* TypeScript
+* Vite
 
 ---
 
-# 2. Backend Setup
+## Current Status
 
-```bash
-cd backend
+### Completed
 
-python -m venv venv
+* Authentication
+* Household architecture
+* Person model
+* Account model
+* Account ownership
+* Rules engine
+* Imported transaction framework
+* Database migrations
 
-source venv/bin/activate
-# OR
-venv\Scripts\activate
+### In Progress
 
-pip install -r requirements.txt
-```
+* Generic bank statement parser
+* Transaction import pipeline
 
-Create `.env`
+### Planned
 
-```env
-SECRET_KEY=your_secret_key_here
-```
-
-Run backend:
-
-```bash
-uvicorn main:app --reload
-```
-
-
-# 3. Frontend Setup
-
-```bash
-cd ../frontend
-
-npm install
-
-npm run dev
-```
-
-
-# 4. Access Application
-
-```text
-Frontend:
-http://localhost:5173
-
-Backend:
-http://localhost:8000
-```
-
-
-# Current System Design Decisions
-
-## Why immutable budget history?
-
-Because overwriting financial policies destroys analytical history.
-
-The system instead tracks:
-
-```text
-budget evolution over time
-```
-
-which enables future:
-
-* forecasting
-* behavior analysis
-* trend reconstruction
-
-
-## Why categories come from transactions?
-
-Transactions are the canonical source of financial truth.
-
-Allowing arbitrary budgeting categories creates:
-
-* taxonomy drift
-* duplicate semantics
-* broken analytics
-
-
-# Current Limitations
-
-* SQLite still used for local persistence
-* No bank API integrations yet (or ever coz RBI, lol)
-* No refresh token rotation
-* No recurring transaction inference yet
-* No forecasting engine yet
-* No automated anomaly detection yet
-
-
-# Planned Roadmap
-
-## Phase 2
-
-### Financial Intelligence Layer
-
-* Budget adherence scoring
-* Spending anomaly detection
-* Burn-rate prediction
-* Monthly trajectory engine
-* Savings optimization
-
-
-## Phase 3
-
-### Wealth Operating System
-
-* Goal planning
-* FIRE projections (maybe, maybe not)
-* Portfolio integration (with CSV or PDF uploads - no APIs)
-* Tax analytics
-* Financial simulations
-
-
-# Design Principles
-
-```text
-No fake metrics
-No decorative dashboards
-No hidden calculations
-No black-box finance logic
-```
-
-The goal is a transparent financial system that can evolve into a complete personal finance intelligence platform.
+* Posting engine
+* Double-entry ledger
+* Transfer engine
+* Net worth engine
+* Budget engine
+* Investment accounting
+* Household equity reporting
 
 ---
----
----
----
----
 
-# Author
+## Long-Term Goal
 
-Built as a long-term systems architecture project focused on financial clarity, behavioral analytics, and compounding visibility. Completely vibe-coded with my distinguished colleagues:
+The goal is not to build another budgeting application.
 
-* señor ChatGPT (master of confident overengineering, philosophical tangents, and “technically correct” solutions that somehow create three new problems)
-* monsieur Claude (calm architect of elegant abstractions, suspiciously reasonable explanations, and dangerously persuasive refactor suggestions)
-* Gemini bhai™ (provider of cosmic confusion, unsolicited enlightenment, and answers that feel spiritually correct but operationally risky)
+The goal is to build a financial system that can reconstruct an individual's or household's financial reality from first principles, while remaining understandable, auditable and trustworthy.
