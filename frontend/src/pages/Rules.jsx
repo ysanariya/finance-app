@@ -6,9 +6,15 @@ import {
   CheckCircle,
   Circle,
   X,
+  Activity,
+  Shield,
+  ArrowRight,
 } from "lucide-react";
 
 import { theme } from "../theme/theme";
+
+import RulesStats from "../components/cards/RulesStat";
+import RuleEngineHealthCard from "../components/cards/RuleEngineHealthCard";
 
 const formatINR = (value) =>
   "₹" +
@@ -18,25 +24,39 @@ const formatINR = (value) =>
   });
 
 export default function Rules() {
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [rules, setRules]               = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [editingRule, setEditingRule]   = useState(null);
-  const [editForm, setEditForm]         = useState({});
-  const [reclassifyResults, setReclassifyResults] = useState(null); // null = closed
-  const [reclassifying, setReclassifying]         = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const [reclassifyResults, setReclassifyResults] = useState(null);
+  const [auditTrail, setAuditTrail] = useState([]);
+
+  const [reclassifying, setReclassifying] = useState(false);
 
   const token = localStorage.getItem("token");
 
   async function fetchRules() {
     try {
-      const response = await fetch("http://localhost:8000/rules", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(
+        "http://localhost:8000/rules",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       const data = await response.json();
-      if (Array.isArray(data))            setRules(data);
-      else if (Array.isArray(data.rules)) setRules(data.rules);
-      else                                setRules([]);
+
+      if (Array.isArray(data)) {
+        setRules(data);
+      } else if (Array.isArray(data.rules)) {
+        setRules(data.rules);
+      } else {
+        setRules([]);
+      }
     } catch (error) {
       console.error(error);
       setRules([]);
@@ -48,13 +68,26 @@ export default function Rules() {
   async function reclassifyTransactions() {
     try {
       setReclassifying(true);
-      const response = await fetch("http://localhost:8000/rules/reclassify", {
-        method:  "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+
+      const response = await fetch(
+        "http://localhost:8000/rules/reclassify",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       const data = await response.json();
-      // Show results modal with the returned list
+
       setReclassifyResults(data);
+
+      if (data?.reclassified?.length) {
+        setAuditTrail(
+          data.reclassified.slice(0, 8)
+        );
+      }
     } catch (error) {
       console.error(error);
       alert("Reclassification failed");
@@ -66,32 +99,50 @@ export default function Rules() {
   async function saveRuleChanges() {
     try {
       if (editingRule.id) {
-        // Edit existing
         const response = await fetch(
           `http://localhost:8000/rules/${editingRule.id}`,
           {
-            method:  "PATCH",
+            method: "PATCH",
             headers: {
-              "Content-Type": "application/json",
-              Authorization:  `Bearer ${token}`,
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
             },
             body: JSON.stringify(editForm),
           }
         );
-        if (!response.ok) { alert("Failed to update rule"); return; }
+
+        if (!response.ok) {
+          alert("Failed to update rule");
+          return;
+        }
       } else {
-        // Create new
-        const response = await fetch("http://localhost:8000/rules", {
-          method:  "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization:  `Bearer ${token}`,
-          },
-          body: JSON.stringify(editForm),
-        });
+        const response = await fetch(
+          "http://localhost:8000/rules",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body: JSON.stringify(editForm),
+          }
+        );
+
         const data = await response.json();
-        if (!response.ok) { alert(data.detail || "Failed to create rule"); return; }
+
+        if (!response.ok) {
+          alert(
+            data.detail ||
+              "Failed to create rule"
+          );
+          return;
+        }
       }
+
       await fetchRules();
       setEditingRule(null);
     } catch (error) {
@@ -99,22 +150,46 @@ export default function Rules() {
     }
   }
 
-  useEffect(() => { fetchRules(); }, []);
+  useEffect(() => {
+    fetchRules();
+  }, []);
 
   function getTypeColor(type) {
     switch (type?.toLowerCase()) {
-      case "income":     return theme.colors.positive;
-      case "expense":    return theme.colors.negative;
-      case "transfer":   return theme.colors.neutral;
-      case "investment": return theme.colors.badge.neutralText;
-      case "infer":      return theme.colors.textMuted;
-      default:           return theme.colors.textMuted;
+      case "income":
+        return theme.colors.positive;
+
+      case "expense":
+        return theme.colors.negative;
+
+      case "transfer":
+        return theme.colors.neutral;
+
+      case "investment":
+        return theme.colors.badge
+          .neutralText;
+
+      default:
+        return theme.colors.textMuted;
     }
   }
 
+  const activeRules = rules.filter(
+    (r) => r.is_active
+  ).length;
+
+  const disabledRules =
+    rules.length - activeRules;
+
   if (loading) {
     return (
-      <div style={{ color: theme.colors.textPrimary, padding: "32px", fontFamily: theme.typography.body.fontFamily }}>
+      <div
+        style={{
+          color:
+            theme.colors.textPrimary,
+          padding: "32px",
+        }}
+      >
         Loading rules...
       </div>
     );
@@ -123,621 +198,1442 @@ export default function Rules() {
   return (
     <div
       style={{
-        padding:    "24px",
-        color:      theme.colors.textPrimary,
-        background: theme.colors.background,
-        minHeight:  "100vh",
+        minHeight: "100vh",
+        padding: "28px",
+        background:
+          theme.colors.background,
+        color:
+          theme.colors.textPrimary,
       }}
     >
-
       {/* HEADER */}
-      <div style={{ marginBottom: "24px" }}>
-        <h1
-          style={{
-            margin:        0,
-            fontFamily:    theme.typography.heading.fontFamily,
-            fontWeight:    theme.typography.heading.fontWeight,
-            fontSize:      theme.typography.heading.fontSize,
-            letterSpacing: theme.typography.heading.letterSpacing,
-            color:         theme.colors.textPrimary,
-          }}
-        >
-          Rules
-        </h1>
-        <p style={{ color: theme.colors.textSecondary, fontFamily: theme.typography.body.fontFamily, fontSize: theme.typography.body.fontSize }}>
-          Manage transaction classification rules
-        </p>
-      </div>
 
-      {/* ACTION BUTTONS */}
-      <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
-
-        <button
-          onClick={reclassifyTransactions}
-          disabled={reclassifying}
-          style={{
-            background:  "transparent",
-            border:      `1px solid ${theme.colors.border}`,
-            color:       reclassifying ? theme.colors.textMuted : theme.colors.textPrimary,
-            borderRadius: theme.layout.cardRadius,
-            padding:     "10px 16px",
-            cursor:      reclassifying ? "not-allowed" : "pointer",
-            display:     "flex",
-            alignItems:  "center",
-            gap:         "8px",
-            fontFamily:  theme.typography.body.fontFamily,
-            fontSize:    theme.typography.body.fontSize,
-            opacity:     reclassifying ? 0.6 : 1,
-            transition:  "opacity 0.15s",
-          }}
-        >
-          <RefreshCw size={16} style={{ animation: reclassifying ? "spin 1s linear infinite" : "none" }} />
-          {reclassifying ? "Reclassifying…" : "Reclassify"}
-        </button>
-
-        <button
-          onClick={() => {
-            setEditingRule({ id: null });
-            setEditForm({
-              pattern:          "",
-              match_type:       "contains",
-              merchant:         "",
-              category:         "",
-              transaction_type: "infer",
-              priority:         50,
-              is_active:        true,
-            });
-          }}
-          style={{
-            background:   theme.colors.positive,
-            border:       "none",
-            color:        theme.colors.background,
-            borderRadius: theme.layout.cardRadius,
-            padding:      "10px 16px",
-            cursor:       "pointer",
-            display:      "flex",
-            alignItems:   "center",
-            gap:          "8px",
-            fontFamily:   theme.typography.body.fontFamily,
-            fontSize:     theme.typography.body.fontSize,
-            fontWeight:   "600",
-          }}
-        >
-          <Plus size={16} />
-          New Rule
-        </button>
-
-      </div>
-
-      {/* RULES TABLE */}
       <div
         style={{
-          background:   theme.colors.card,
-          border:       `1px solid ${theme.colors.border}`,
-          borderRadius: theme.layout.cardRadius,
-          overflow:     "hidden",
+          marginBottom: "24px",
         }}
       >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent:
+              "space-between",
+            alignItems: "center",
+            marginBottom: "10px",
+          }}
+        >
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontFamily:
+                  theme.typography.heading
+                    .fontFamily,
+                fontSize:
+                  theme.typography.heading
+                    .fontSize,
+                fontWeight:
+                  theme.typography.heading
+                    .fontWeight,
+              }}
+            >
+              Rules Engine
+            </h1>
 
-          <thead style={{ background: theme.table.headerBackground }}>
+            <p
+              style={{
+                marginTop: "8px",
+                color:
+                  theme.colors
+                    .textSecondary,
+              }}
+            >
+              Transaction
+              classification,
+              merchant mapping and
+              automatic
+              categorisation.
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+            }}
+          >
+            <button
+              onClick={
+                reclassifyTransactions
+              }
+              disabled={
+                reclassifying
+              }
+              style={{
+                background:
+                  theme.glass
+                    .background,
+                backdropFilter:
+                  `blur(${theme.glass.blur})`,
+                border: `1px solid ${theme.glass.border}`,
+                color:
+                  theme.colors
+                    .textPrimary,
+                padding:
+                  "10px 16px",
+                borderRadius:
+                  "12px",
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: "8px",
+                cursor:
+                  "pointer",
+              }}
+            >
+              <RefreshCw
+                size={16}
+                style={{
+                  animation:
+                    reclassifying
+                      ? "spin 1s linear infinite"
+                      : "none",
+                }}
+              />
+
+              {reclassifying
+                ? "Processing..."
+                : "Reclassify"}
+            </button>
+
+            <button
+              onClick={() => {
+                setEditingRule({
+                  id: null,
+                });
+
+                setEditForm({
+                  pattern: "",
+                  match_type:
+                    "contains",
+                  merchant: "",
+                  category: "",
+                  transaction_type:
+                    "infer",
+                  priority: 50,
+                  is_active: true,
+                });
+              }}
+              style={{
+                background:
+                  theme.colors
+                    .positive,
+                border: "none",
+                color:
+                  theme.colors
+                    .background,
+                padding:
+                  "10px 18px",
+                borderRadius:
+                  "12px",
+                fontWeight: 600,
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: "8px",
+                cursor:
+                  "pointer",
+              }}
+            >
+              <Plus size={16} />
+              New Rule
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI ROW */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "2fr 1fr",
+          gap: "20px",
+          marginBottom: "24px",
+        }}
+      >
+        <RulesStats
+          rules={rules}
+        />
+
+        <RuleEngineHealthCard
+          rules={rules}
+        />
+      </div>
+
+      {/* AUDIT + OVERVIEW */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 340px",
+          gap: "20px",
+          marginBottom: "24px",
+        }}
+      >
+        <div
+          style={{
+            background:
+              theme.glass
+                .background,
+            backdropFilter:
+              `blur(${theme.glass.blur})`,
+            border: `1px solid ${theme.glass.border}`,
+            borderRadius:
+              "18px",
+            overflow: "hidden",
+            boxShadow:
+              theme.glass.shadow,
+          }}
+        >
+          <div
+            style={{
+              padding: "18px",
+              borderBottom: `1px solid ${theme.colors.border}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: "10px",
+              }}
+            >
+              <Shield
+                size={16}
+              />
+
+              <span>
+                Rules Engine
+                Overview
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(3,1fr)",
+            }}
+          >
+            <OverviewItem
+              label="Active"
+              value={activeRules}
+              color={
+                theme.colors
+                  .positive
+              }
+            />
+
+            <OverviewItem
+              label="Disabled"
+              value={disabledRules}
+              color={
+                theme.colors
+                  .negative
+              }
+            />
+
+            <OverviewItem
+              label="Priority"
+              value={
+                rules.length
+                  ? Math.max(
+                      ...rules.map(
+                        (r) =>
+                          r.priority
+                      )
+                    )
+                  : 0
+              }
+              color={
+                theme.colors
+                  .neutral
+              }
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            background:
+              theme.glass
+                .background,
+            backdropFilter:
+              `blur(${theme.glass.blur})`,
+            border: `1px solid ${theme.glass.border}`,
+            borderRadius:
+              "18px",
+            overflow: "hidden",
+            boxShadow:
+              theme.glass.shadow,
+          }}
+        >
+          <div
+            style={{
+              padding: "18px",
+              borderBottom: `1px solid ${theme.colors.border}`,
+              display: "flex",
+              alignItems:
+                "center",
+              gap: "10px",
+            }}
+          >
+            <Activity
+              size={16}
+            />
+            Recent Audit
+          </div>
+
+          <div>
+            {auditTrail.length ===
+            0 ? (
+              <div
+                style={{
+                  padding:
+                    "20px",
+                  color:
+                    theme.colors
+                      .textSecondary,
+                }}
+              >
+                Run a
+                reclassification
+                to generate
+                audit history.
+              </div>
+            ) : (
+              auditTrail.map(
+                (
+                  item,
+                  index
+                ) => (
+                  <div
+                    key={
+                      index
+                    }
+                    style={{
+                      padding:
+                        "14px 18px",
+                      borderBottom: `1px solid ${theme.colors.border}`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color:
+                          theme
+                            .colors
+                            .textPrimary,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {item.new_merchant ||
+                        "Unknown"}
+                    </div>
+
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        alignItems:
+                          "center",
+                        gap: "6px",
+                        marginTop:
+                          "4px",
+                        color:
+                          theme
+                            .colors
+                            .textSecondary,
+                        fontSize:
+                          "12px",
+                      }}
+                    >
+                      <span>
+                        {item.old_category ||
+                          "Uncategorised"}
+                      </span>
+
+                      <ArrowRight
+                        size={
+                          12
+                        }
+                      />
+
+                      <span
+                        style={{
+                          color:
+                            theme
+                              .colors
+                              .positive,
+                        }}
+                      >
+                        {item.new_category}
+                      </span>
+                    </div>
+                  </div>
+                )
+              )
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* TABLE CARD */}
+
+      <div
+        style={{
+          background:
+            theme.glass
+              .background,
+          backdropFilter:
+            `blur(${theme.glass.blur})`,
+          border: `1px solid ${theme.glass.border}`,
+          borderRadius:
+            "18px",
+          overflow: "hidden",
+          boxShadow:
+            theme.glass.shadow,
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse:
+              "collapse",
+          }}
+        >
+          <thead
+            style={{
+              background:
+                theme.table
+                  .headerBackground,
+            }}
+          >
             <tr>
-              {["Pattern", "Match", "Merchant", "Category", "Type", "Priority", "Status", "Actions"].map((header) => (
-                <th
-                  key={header}
-                  style={{
-                    textAlign:     "left",
-                    padding:       `${theme.table.headerPaddingV} ${theme.table.headerPaddingH}`,
-                    color:         theme.table.headerColor,
-                    fontFamily:    theme.table.headerFontFamily,
-                    fontSize:      theme.table.headerFontSize,
-                    fontWeight:    theme.table.headerFontWeight,
-                    letterSpacing: theme.table.headerLetterSpacing,
-                    textTransform: theme.table.headerTextTransform,
-                    borderBottom:  `1px solid ${theme.colors.border}`,
-                  }}
-                >
-                  {header}
-                </th>
-              ))}
+              {[
+                "PRI",
+                "RULE",
+                "DESTINATION",
+                "TYPE",
+                "STATUS",
+                "ACTION",
+              ].map(
+                (
+                  header
+                ) => (
+                  <th
+                    key={
+                      header
+                    }
+                    style={{
+                      textAlign:
+                        "left",
+                      padding:
+                        "14px 18px",
+                      color:
+                        theme
+                          .table
+                          .headerColor,
+                      fontSize:
+                        "11px",
+                      letterSpacing:
+                        "0.08em",
+                      borderBottom: `1px solid ${theme.colors.border}`,
+                    }}
+                  >
+                    {header}
+                  </th>
+                )
+              )}
             </tr>
           </thead>
 
           <tbody>
-            {rules.map((rule) => (
-              <tr key={rule.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-
-                <td style={{ ...cellStyle, fontWeight: "500" }}>{rule.pattern}</td>
-
-                <td style={{ ...cellStyle, color: theme.colors.textSecondary }}>{rule.match_type}</td>
-
-                <td style={{ ...cellStyle, fontWeight: theme.table.merchantFontWeight, color: theme.table.merchantColor }}>
-                  {rule.merchant || "—"}
-                </td>
-
-                <td style={cellStyle}>
-                  <span style={badgeStyle}>{rule.category || "Uncategorized"}</span>
-                </td>
-
-                <td style={cellStyle}>
-                  <span
-                    style={{
-                      background:    `${getTypeColor(rule.transaction_type)}20`,
-                      color:         getTypeColor(rule.transaction_type),
-                      padding:       `${theme.table.badgePaddingV} ${theme.table.badgePaddingH}`,
-                      borderRadius:  theme.table.badgeRadius,
-                      fontFamily:    theme.table.badgeFontFamily,
-                      fontSize:      theme.table.badgeFontSize,
-                      fontWeight:    theme.table.badgeFontWeight,
-                      textTransform: "capitalize",
-                      display:       "inline-block",
-                    }}
-                  >
-                    {rule.transaction_type || "infer"}
-                  </span>
-                </td>
-
-                <td style={{ ...cellStyle, fontFamily: theme.table.dateFontFamily, color: theme.colors.textSecondary }}>
-                  {rule.priority}
-                </td>
-
-                <td style={cellStyle}>
+            {rules.map(
+              (rule) => (
+                <tr
+                  key={
+                    rule.id
+                  }
+                  style={{
+                    borderBottom: `1px solid ${theme.colors.border}`,
+                  }}
+                >
+				                <td
+                  style={{
+                    padding:
+                      "16px 18px",
+                  }}
+                >
                   <div
                     style={{
-                      display:    "flex",
-                      alignItems: "center",
-                      gap:        "8px",
-                      color:      rule.is_active ? theme.colors.positive : theme.colors.textSecondary,
-                      fontFamily: theme.table.cellFontFamily,
-                      fontSize:   theme.table.cellFontSize,
+                      fontFamily:
+                        theme
+                          .typography
+                          .mono
+                          .fontFamily,
+                      color:
+                        rule.priority <=
+                        10
+                          ? theme
+                              .rules
+                              .priorityHigh
+                          : rule.priority <=
+                            50
+                          ? theme
+                              .rules
+                              .priorityMedium
+                          : theme
+                              .rules
+                              .priorityLow,
+                      fontWeight: 600,
                     }}
                   >
-                    {rule.is_active ? <CheckCircle size={15} /> : <Circle size={15} />}
-                    <span>{rule.is_active ? "Active" : "Disabled"}</span>
+                    {String(
+                      rule.priority
+                    ).padStart(
+                      3,
+                      "0"
+                    )}
                   </div>
                 </td>
 
-                <td style={cellStyle}>
-                  <button
-                    onClick={() => {
-                      setEditingRule(rule);
-                      setEditForm({
-                        pattern:          rule.pattern         || "",
-                        match_type:       rule.match_type      || "contains",
-                        merchant:         rule.merchant        || "",
-                        category:         rule.category        || "",
-                        transaction_type: rule.transaction_type || "infer",
-                        priority:         rule.priority        ?? 50,
-                        is_active:        rule.is_active,
-                      });
-                    }}
+                <td
+                  style={{
+                    padding:
+                      "16px 18px",
+                  }}
+                >
+                  <div
                     style={{
-                      background:      theme.table.actionBtnBackground,
-                      border:          `1px solid ${theme.table.actionBtnBorder}`,
-                      color:           theme.colors.textSecondary,
-                      borderRadius:    theme.layout.cardRadius,
-                      width:           "34px",
-                      height:          "34px",
-                      cursor:          "pointer",
-                      display:         "flex",
-                      alignItems:      "center",
-                      justifyContent:  "center",
+                      fontWeight: 600,
+                      color:
+                        theme
+                          .colors
+                          .textPrimary,
+                      marginBottom:
+                        "4px",
                     }}
                   >
-                    <Pencil size={14} />
-                  </button>
+                    {rule.merchant ||
+                      rule.pattern}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "12px",
+                      color:
+                        theme
+                          .colors
+                          .textSecondary,
+                      fontFamily:
+                        theme
+                          .typography
+                          .mono
+                          .fontFamily,
+                    }}
+                  >
+                    {rule.match_type?.toUpperCase()}
+                    :{" "}
+                    {
+                      rule.pattern
+                    }
+                  </div>
                 </td>
 
+                <td
+                  style={{
+                    padding:
+                      "16px 18px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display:
+                        "flex",
+                      flexDirection:
+                        "column",
+                      gap: "6px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display:
+                          "inline-block",
+                        width:
+                          "fit-content",
+                        background:
+                          theme
+                            .colors
+                            .badge
+                            .neutralBg,
+                        color:
+                          theme
+                            .colors
+                            .badge
+                            .neutralText,
+                        padding:
+                          "4px 10px",
+                        borderRadius:
+                          "999px",
+                        fontSize:
+                          "11px",
+                      }}
+                    >
+                      {rule.category ||
+                        "Uncategorised"}
+                    </span>
+
+                    <span
+                      style={{
+                        fontSize:
+                          "12px",
+                        color:
+                          theme
+                            .colors
+                            .textSecondary,
+                      }}
+                    >
+                      Merchant:
+                      {" "}
+                      {rule.merchant ||
+                        "—"}
+                    </span>
+                  </div>
+                </td>
+
+                <td
+                  style={{
+                    padding:
+                      "16px 18px",
+                  }}
+                >
+                  <span
+                    style={{
+                      background:
+                        `${getTypeColor(
+                          rule.transaction_type
+                        )}20`,
+                      color:
+                        getTypeColor(
+                          rule.transaction_type
+                        ),
+                      padding:
+                        "5px 10px",
+                      borderRadius:
+                        "999px",
+                      fontSize:
+                        "11px",
+                      fontWeight: 600,
+                      textTransform:
+                        "capitalize",
+                    }}
+                  >
+                    {rule.transaction_type ||
+                      "infer"}
+                  </span>
+                </td>
+
+                <td
+                  style={{
+                    padding:
+                      "16px 18px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap: "8px",
+                    }}
+                  >
+                    {rule.is_active ? (
+                      <CheckCircle
+                        size={
+                          14
+                        }
+                        color={
+                          theme
+                            .colors
+                            .positive
+                        }
+                      />
+                    ) : (
+                      <Circle
+                        size={
+                          14
+                        }
+                        color={
+                          theme
+                            .colors
+                            .textSecondary
+                        }
+                      />
+                    )}
+
+                    <span
+                      style={{
+                        color:
+                          rule.is_active
+                            ? theme
+                                .colors
+                                .positive
+                            : theme
+                                .colors
+                                .textSecondary,
+                      }}
+                    >
+                      {rule.is_active
+                        ? "Active"
+                        : "Disabled"}
+                    </span>
+                  </div>
+                </td>
+
+                <td
+                  style={{
+                    padding:
+                      "16px 18px",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setEditingRule(
+                        rule
+                      );
+
+                      setEditForm(
+                        {
+                          pattern:
+                            rule.pattern ||
+                            "",
+
+                          match_type:
+                            rule.match_type ||
+                            "contains",
+
+                          merchant:
+                            rule.merchant ||
+                            "",
+
+                          category:
+                            rule.category ||
+                            "",
+
+                          transaction_type:
+                            rule.transaction_type ||
+                            "infer",
+
+                          priority:
+                            rule.priority ??
+                            50,
+
+                          is_active:
+                            rule.is_active,
+                        }
+                      );
+                    }}
+                    style={{
+                      background:
+                        theme
+                          .colors
+                          .cardAlt,
+                      border: `1px solid ${theme.colors.border}`,
+                      width:
+                        "36px",
+                      height:
+                        "36px",
+                      borderRadius:
+                        "10px",
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      cursor:
+                        "pointer",
+                      color:
+                        theme
+                          .colors
+                          .textPrimary,
+                    }}
+                  >
+                    <Pencil
+                      size={
+                        14
+                      }
+                    />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
-
         </table>
       </div>
 
-      {/* EDIT / NEW RULE MODAL */}
-      {editingRule && (
-        <div style={overlayStyle}>
-          <div style={{ ...modalStyle, width: "460px" }}>
+      {/* EDIT RULE MODAL */}
 
-            <h2 style={modalHeading}>
-              {editingRule.id ? "Edit Rule" : "New Rule"}
+      {editingRule && (
+        <div
+          style={
+            overlayStyle
+          }
+        >
+          <div
+            style={{
+              ...modalStyle,
+              width:
+                "520px",
+            }}
+          >
+            <h2
+              style={
+                modalHeading
+              }
+            >
+              {editingRule.id
+                ? "Edit Rule"
+                : "Create Rule"}
             </h2>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-
+            <div
+              style={{
+                display:
+                  "grid",
+                gap: "14px",
+              }}
+            >
               <input
-                value={editForm.pattern}
-                onChange={(e) => setEditForm({ ...editForm, pattern: e.target.value })}
-                placeholder="Pattern (text to match in description)"
-                style={inputStyle}
+                value={
+                  editForm.pattern
+                }
+                onChange={(
+                  e
+                ) =>
+                  setEditForm(
+                    {
+                      ...editForm,
+                      pattern:
+                        e
+                          .target
+                          .value,
+                    }
+                  )
+                }
+                placeholder="Pattern"
+                style={
+                  inputStyle
+                }
               />
 
               <select
-                value={editForm.match_type}
-                onChange={(e) => setEditForm({ ...editForm, match_type: e.target.value })}
-                style={inputStyle}
+                value={
+                  editForm.match_type
+                }
+                onChange={(
+                  e
+                ) =>
+                  setEditForm(
+                    {
+                      ...editForm,
+                      match_type:
+                        e
+                          .target
+                          .value,
+                    }
+                  )
+                }
+                style={
+                  inputStyle
+                }
               >
-                <option value="contains">Contains</option>
-                <option value="exact">Exact</option>
+                <option value="contains">
+                  Contains
+                </option>
+
+                <option value="exact">
+                  Exact
+                </option>
               </select>
 
               <input
-                value={editForm.merchant}
-                onChange={(e) => setEditForm({ ...editForm, merchant: e.target.value })}
-                placeholder="Merchant name"
-                style={inputStyle}
+                value={
+                  editForm.merchant
+                }
+                onChange={(
+                  e
+                ) =>
+                  setEditForm(
+                    {
+                      ...editForm,
+                      merchant:
+                        e
+                          .target
+                          .value,
+                    }
+                  )
+                }
+                placeholder="Merchant"
+                style={
+                  inputStyle
+                }
               />
 
               <input
-                value={editForm.category}
-                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                value={
+                  editForm.category
+                }
+                onChange={(
+                  e
+                ) =>
+                  setEditForm(
+                    {
+                      ...editForm,
+                      category:
+                        e
+                          .target
+                          .value,
+                    }
+                  )
+                }
                 placeholder="Category"
-                style={inputStyle}
+                style={
+                  inputStyle
+                }
               />
 
               <select
-                value={editForm.transaction_type}
-                onChange={(e) => setEditForm({ ...editForm, transaction_type: e.target.value })}
-                style={inputStyle}
+                value={
+                  editForm.transaction_type
+                }
+                onChange={(
+                  e
+                ) =>
+                  setEditForm(
+                    {
+                      ...editForm,
+                      transaction_type:
+                        e
+                          .target
+                          .value,
+                    }
+                  )
+                }
+                style={
+                  inputStyle
+                }
               >
-                <option value="infer">Infer from bank statement</option>
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-                <option value="transfer">Transfer</option>
-                <option value="investment">Investment</option>
+                <option value="infer">
+                  Infer
+                </option>
+
+                <option value="expense">
+                  Expense
+                </option>
+
+                <option value="income">
+                  Income
+                </option>
+
+                <option value="transfer">
+                  Transfer
+                </option>
+
+                <option value="investment">
+                  Investment
+                </option>
               </select>
 
               <input
                 type="number"
-                value={editForm.priority}
-                onChange={(e) => setEditForm({ ...editForm, priority: Number(e.target.value) })}
+                value={
+                  editForm.priority
+                }
+                onChange={(
+                  e
+                ) =>
+                  setEditForm(
+                    {
+                      ...editForm,
+                      priority:
+                        Number(
+                          e
+                            .target
+                            .value
+                        ),
+                    }
+                  )
+                }
                 placeholder="Priority"
-                style={inputStyle}
+                style={
+                  inputStyle
+                }
               />
-
-              {editingRule.id && (
+			                {editingRule.id && (
                 <label
                   style={{
-                    display:    "flex",
+                    display: "flex",
                     alignItems: "center",
-                    gap:        "10px",
-                    cursor:     "pointer",
-                    color:      theme.colors.textSecondary,
-                    fontFamily: theme.typography.body.fontFamily,
-                    fontSize:   theme.typography.body.fontSize,
+                    gap: "10px",
+                    color:
+                      theme.colors
+                        .textSecondary,
                   }}
                 >
                   <input
                     type="checkbox"
-                    checked={editForm.is_active}
-                    onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+                    checked={
+                      editForm.is_active
+                    }
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        is_active:
+                          e.target.checked,
+                      })
+                    }
                   />
-                  Active
+                  Active Rule
                 </label>
               )}
 
               <button
-                onClick={saveRuleChanges}
+                onClick={
+                  saveRuleChanges
+                }
                 style={{
-                  background:   theme.colors.positive,
-                  color:        theme.colors.background,
-                  border:       "none",
-                  padding:      "14px",
-                  borderRadius: "12px",
-                  fontFamily:   theme.typography.body.fontFamily,
-                  fontWeight:   "600",
-                  fontSize:     theme.typography.body.fontSize,
-                  cursor:       "pointer",
-                  marginTop:    "8px",
+                  background:
+                    theme.colors
+                      .positive,
+                  border: "none",
+                  color:
+                    theme.colors
+                      .background,
+                  padding: "14px",
+                  borderRadius:
+                    "12px",
+                  fontWeight: 600,
+                  cursor:
+                    "pointer",
                 }}
               >
-                {editingRule.id ? "Save Changes" : "Save Rule"}
+                {editingRule.id
+                  ? "Save Changes"
+                  : "Create Rule"}
               </button>
 
               <button
-                onClick={() => setEditingRule(null)}
+                onClick={() =>
+                  setEditingRule(
+                    null
+                  )
+                }
                 style={{
-                  background:   "transparent",
-                  color:        theme.colors.textSecondary,
-                  border:       `1px solid ${theme.colors.border}`,
-                  padding:      "14px",
-                  borderRadius: "12px",
-                  fontFamily:   theme.typography.body.fontFamily,
-                  fontSize:     theme.typography.body.fontSize,
-                  cursor:       "pointer",
+                  background:
+                    "transparent",
+                  border: `1px solid ${theme.colors.border}`,
+                  color:
+                    theme.colors
+                      .textSecondary,
+                  padding: "14px",
+                  borderRadius:
+                    "12px",
+                  cursor:
+                    "pointer",
                 }}
               >
                 Cancel
               </button>
-
             </div>
           </div>
         </div>
       )}
 
-      {/* RECLASSIFICATION RESULTS MODAL */}
+      {/* RECLASSIFICATION MODAL */}
+
       {reclassifyResults && (
-        <div style={overlayStyle}>
+        <div
+          style={
+            overlayStyle
+          }
+        >
           <div
             style={{
               ...modalStyle,
-              width:     "860px",
-              maxWidth:  "95vw",
-              maxHeight: "85vh",
-              display:   "flex",
-              flexDirection: "column",
+              width:
+                "1000px",
+              maxWidth:
+                "95vw",
+              maxHeight:
+                "85vh",
+              overflow:
+                "hidden",
+              display:
+                "flex",
+              flexDirection:
+                "column",
             }}
           >
-
-            {/* Modal header */}
             <div
               style={{
-                display:        "flex",
-                justifyContent: "space-between",
-                alignItems:     "center",
-                marginBottom:   "20px",
-                flexShrink:     0,
+                display:
+                  "flex",
+                justifyContent:
+                  "space-between",
+                alignItems:
+                  "center",
+                marginBottom:
+                  "20px",
               }}
             >
               <div>
-                <h2 style={{ ...modalHeading, margin: 0 }}>Reclassification Complete</h2>
-                <p
+                <h2
                   style={{
-                    margin:     "6px 0 0",
-                    color:      theme.colors.textSecondary,
-                    fontFamily: theme.typography.body.fontFamily,
-                    fontSize:   theme.typography.body.fontSize,
+                    ...modalHeading,
+                    marginBottom:
+                      "4px",
                   }}
                 >
-                  {reclassifyResults.updated} transaction{reclassifyResults.updated !== 1 ? "s" : ""} matched a rule
-                </p>
+                  Reclassification
+                  Complete
+                </h2>
+
+                <div
+                  style={{
+                    color:
+                      theme.colors
+                        .textSecondary,
+                  }}
+                >
+                  {
+                    reclassifyResults.updated
+                  }{" "}
+                  transactions
+                  updated
+                </div>
               </div>
+
               <button
-                onClick={() => setReclassifyResults(null)}
+                onClick={() =>
+                  setReclassifyResults(
+                    null
+                  )
+                }
                 style={{
-                  background:   "transparent",
-                  border:       `1px solid ${theme.colors.border}`,
-                  color:        theme.colors.textSecondary,
-                  borderRadius: "8px",
-                  width:        "36px",
-                  height:       "36px",
-                  cursor:       "pointer",
-                  display:      "flex",
-                  alignItems:   "center",
-                  justifyContent: "center",
-                  flexShrink:   0,
+                  background:
+                    "transparent",
+                  border: `1px solid ${theme.colors.border}`,
+                  width:
+                    "36px",
+                  height:
+                    "36px",
+                  borderRadius:
+                    "10px",
+                  color:
+                    theme.colors
+                      .textSecondary,
+                  cursor:
+                    "pointer",
                 }}
               >
-                <X size={16} />
+                <X
+                  size={16}
+                />
               </button>
             </div>
 
-            {/* Results table */}
-            {reclassifyResults.reclassified?.length > 0 ? (
-              <div style={{ overflowY: "auto", flex: 1 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-
-                  <thead
-                    style={{
-                      position:   "sticky",
-                      top:        0,
-                      background: theme.table.headerBackground,
-                      zIndex:     1,
-                    }}
-                  >
-                    <tr>
-                      {["Date", "Description", "Amount", "Rule Matched", "Category", "Merchant"].map((h) => (
+            <div
+              style={{
+                overflowY:
+                  "auto",
+                flex: 1,
+              }}
+            >
+              <table
+                style={{
+                  width:
+                    "100%",
+                  borderCollapse:
+                    "collapse",
+                }}
+              >
+                <thead>
+                  <tr>
+                    {[
+                      "Date",
+                      "Description",
+                      "Amount",
+                      "Rule",
+                      "Category",
+                      "Merchant",
+                    ].map(
+                      (
+                        h
+                      ) => (
                         <th
-                          key={h}
+                          key={
+                            h
+                          }
                           style={{
-                            textAlign:     h === "Amount" ? "right" : "left",
-                            padding:       `${theme.table.headerPaddingV} ${theme.table.headerPaddingH}`,
-                            color:         theme.table.headerColor,
-                            fontFamily:    theme.table.headerFontFamily,
-                            fontSize:      theme.table.headerFontSize,
-                            fontWeight:    theme.table.headerFontWeight,
-                            letterSpacing: theme.table.headerLetterSpacing,
-                            textTransform: theme.table.headerTextTransform,
-                            borderBottom:  `1px solid ${theme.colors.border}`,
-                            whiteSpace:    "nowrap",
+                            textAlign:
+                              "left",
+                            padding:
+                              "12px",
+                            color:
+                              theme
+                                .table
+                                .headerColor,
+                            borderBottom: `1px solid ${theme.colors.border}`,
+                            fontSize:
+                              "11px",
+                            textTransform:
+                              "uppercase",
                           }}
                         >
                           {h}
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
+                      )
+                    )}
+                  </tr>
+                </thead>
 
-                  <tbody>
-                    {reclassifyResults.reclassified.map((tx, i) => (
+                <tbody>
+                  {reclassifyResults.reclassified?.map(
+                    (
+                      tx,
+                      idx
+                    ) => (
                       <tr
-                        key={i}
-                        style={{ borderBottom: `1px solid ${theme.colors.border}` }}
+                        key={
+                          idx
+                        }
+                        style={{
+                          borderBottom: `1px solid ${theme.colors.border}`,
+                        }}
                       >
-
-                        {/* Date */}
-                        <td style={{ ...cellStyle, fontFamily: theme.table.dateFontFamily, color: theme.table.dateColor, whiteSpace: "nowrap" }}>
-                          {tx.date}
+                        <td
+                          style={
+                            cellStyle
+                          }
+                        >
+                          {
+                            tx.date
+                          }
                         </td>
 
-                        {/* Description */}
+                        <td
+                          style={
+                            cellStyle
+                          }
+                        >
+                          {
+                            tx.description
+                          }
+                        </td>
+
                         <td
                           style={{
                             ...cellStyle,
-                            color:        theme.table.descriptionColor,
-                            fontSize:     theme.table.descriptionFontSize,
-                            maxWidth:     "280px",
-                            overflow:     "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace:   "nowrap",
+                            fontFamily:
+                              theme
+                                .typography
+                                .mono
+                                .fontFamily,
                           }}
                         >
-                          {tx.description}
+                          {formatINR(
+                            Math.abs(
+                              tx.amount
+                            )
+                          )}
                         </td>
 
-                        {/* Amount */}
                         <td
-                          style={{
-                            ...cellStyle,
-                            textAlign:  "right",
-                            fontFamily: theme.table.amountFontFamily,
-                            fontWeight: theme.table.amountFontWeight,
-                            color:      tx.amount < 0 ? theme.table.amountColorExpense : theme.table.amountColorIncome,
-                            whiteSpace: "nowrap",
-                          }}
+                          style={
+                            cellStyle
+                          }
                         >
-                          {formatINR(Math.abs(tx.amount))}
+                          {
+                            tx.matched_rule
+                          }
                         </td>
 
-                        {/* Rule matched */}
-                        <td style={{ ...cellStyle, color: theme.colors.textSecondary, fontFamily: theme.table.dateFontFamily, fontSize: "12px" }}>
-                          {tx.matched_rule}
+                        <td
+                          style={
+                            cellStyle
+                          }
+                        >
+                          {
+                            tx.new_category
+                          }
                         </td>
 
-                        {/* Category — show old → new if changed */}
-                        <td style={cellStyle}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                            {tx.old_category && tx.old_category !== tx.new_category && (
-                              <span
-                                style={{
-                                  ...smallBadge,
-                                  background: theme.colors.negativeDim,
-                                  color:      theme.colors.textMuted,
-                                  textDecoration: "line-through",
-                                }}
-                              >
-                                {tx.old_category}
-                              </span>
-                            )}
-                            <span style={{ ...smallBadge, background: theme.colors.neutralDim, color: theme.colors.neutral }}>
-                              {tx.new_category || "—"}
-                            </span>
-                          </div>
+                        <td
+                          style={
+                            cellStyle
+                          }
+                        >
+                          {
+                            tx.new_merchant
+                          }
                         </td>
-
-                        {/* Merchant — show old → new if changed */}
-                        <td style={{ ...cellStyle, color: theme.table.merchantColor, fontWeight: theme.table.merchantFontWeight }}>
-                          {tx.new_merchant || "—"}
-                        </td>
-
                       </tr>
-                    ))}
-                  </tbody>
-
-                </table>
-              </div>
-            ) : (
-              <div
-                style={{
-                  padding:    "48px",
-                  textAlign:  "center",
-                  color:      theme.colors.textMuted,
-                  fontFamily: theme.typography.body.fontFamily,
-                  fontSize:   theme.typography.body.fontSize,
-                }}
-              >
-                No transactions matched any rule.
-              </div>
-            )}
-
-            {/* Footer */}
-            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
-              <button
-                onClick={() => setReclassifyResults(null)}
-                style={{
-                  background:   theme.colors.positive,
-                  color:        theme.colors.background,
-                  border:       "none",
-                  padding:      "12px 24px",
-                  borderRadius: "10px",
-                  fontFamily:   theme.typography.body.fontFamily,
-                  fontWeight:   "600",
-                  fontSize:     theme.typography.body.fontSize,
-                  cursor:       "pointer",
-                }}
-              >
-                Done
-              </button>
+                    )
+                  )}
+                </tbody>
+              </table>
             </div>
-
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
       `}</style>
-
     </div>
   );
 }
 
-// ── Shared style constants ────────────────────────────────────────────────────
+/* ---------------------------
+   OVERVIEW ITEM
+---------------------------- */
+
+function OverviewItem({
+  label,
+  value,
+  color,
+}) {
+  return (
+    <div
+      style={{
+        padding:
+          "24px",
+        borderRight:
+          `1px solid ${theme.colors.border}`,
+      }}
+    >
+      <div
+        style={{
+          fontSize:
+            "11px",
+          letterSpacing:
+            "0.08em",
+          color:
+            theme.colors
+              .textSecondary,
+          marginBottom:
+            "8px",
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          fontSize:
+            "28px",
+          fontWeight:
+            700,
+          color,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------
+   SHARED STYLES
+---------------------------- */
 
 const overlayStyle = {
-  position:       "fixed",
-  inset:          0,
-  background:     "rgba(0,0,0,0.75)",
-  display:        "flex",
-  alignItems:     "center",
-  justifyContent: "center",
-  zIndex:         999,
+  position: "fixed",
+  inset: 0,
+  background:
+    "rgba(0,0,0,0.82)",
+  display: "flex",
+  alignItems:
+    "center",
+  justifyContent:
+    "center",
+  zIndex: 9999,
 };
 
 const modalStyle = {
-  background:   theme.colors.card,
-  border:       `1px solid ${theme.colors.border}`,
-  borderRadius: "18px",
-  padding:      "28px",
+  background:
+    theme.glass
+      .background,
+  backdropFilter:
+    `blur(${theme.glass.blur})`,
+  border: `1px solid ${theme.glass.border}`,
+  borderRadius:
+    "20px",
+  boxShadow:
+    theme.glass.shadow,
+  padding: "28px",
 };
 
 const modalHeading = {
-  marginTop:    0,
-  marginBottom: "24px",
-  fontFamily:   theme.typography.subheading.fontFamily,
-  fontWeight:   theme.typography.subheading.fontWeight,
-  fontSize:     "20px",
-  color:        theme.colors.textPrimary,
+  margin: 0,
+  color:
+    theme.colors
+      .textPrimary,
+  fontSize:
+    "22px",
+  fontWeight: 600,
 };
 
 const inputStyle = {
-  background:   theme.colors.cardAlt,
-  border:       `1px solid ${theme.colors.border}`,
-  color:        theme.colors.textPrimary,
-  padding:      "12px",
-  borderRadius: "10px",
-  fontFamily:   theme.typography.body.fontFamily,
-  fontSize:     "14px",
-  outline:      "none",
-  width:        "100%",
-  boxSizing:    "border-box",
+  width: "100%",
+  background:
+    theme.colors
+      .cardAlt,
+  border: `1px solid ${theme.colors.border}`,
+  color:
+    theme.colors
+      .textPrimary,
+  borderRadius:
+    "12px",
+  padding:
+    "12px 14px",
+  fontSize:
+    "14px",
+  outline: "none",
+  boxSizing:
+    "border-box",
 };
 
 const cellStyle = {
-  padding:    `${theme.table.cellPaddingV} ${theme.table.cellPaddingH}`,
-  color:      theme.table.cellColor,
-  fontFamily: theme.table.cellFontFamily,
-  fontSize:   theme.table.cellFontSize,
-  lineHeight: theme.table.cellLineHeight,
-};
-
-const badgeStyle = {
-  background:   theme.colors.badge.neutralBg,
-  color:        theme.colors.badge.neutralText,
-  borderRadius: theme.table.badgeRadius,
-  padding:      `${theme.table.badgePaddingV} ${theme.table.badgePaddingH}`,
-  fontFamily:   theme.table.badgeFontFamily,
-  fontSize:     theme.table.badgeFontSize,
-  fontWeight:   theme.table.badgeFontWeight,
-  display:      "inline-block",
-};
-
-const smallBadge = {
-  display:      "inline-block",
-  padding:      "2px 7px",
-  borderRadius: "999px",
-  fontFamily:   theme.table.badgeFontFamily,
-  fontSize:     "11px",
-  fontWeight:   "500",
+  padding: "12px",
+  color:
+    theme.colors
+      .textPrimary,
+  fontSize:
+    "13px",
 };

@@ -125,6 +125,9 @@ export const theme = {
     // Backgrounds — deep navy/charcoal, cold and sharp
     background: "#080B12",
     sidebar:    "#0A0D16",
+    // Added glass background token
+    glassCard: "rgba(15,20,30,0.6)", // semi-transparent dark glass
+    glassOverlay: "rgba(0,0,0,0.4)",
     card:       "#0F1420",
     cardAlt:    "#141926",
     border:     "#1E2535",
@@ -284,4 +287,45 @@ export const theme = {
     cardRadius:   "10px",
     spacing:      "10px",
   },
+  
+  rules: {
+	  glassBlur: "blur(12px)",
+
+	  priorityHigh: "#00C896",
+	  priorityMedium: "#E0B94A",
+	  priorityLow: "#6B7A99",
+
+	  activeGlow: "0 0 20px rgba(0,200,150,0.15)",
+
+	  panelBg: "rgba(15,20,30,0.60)",
+
+	  statCardHeight: "96px",
+
+	  ruleRowHover: "#141926",
+
+	  successChipBg: "#002E22",
+	  successChipText: "#00C896",
+
+	  disabledChipBg: "#1A1F2B",
+	  disabledChipText: "#6B7A99",
+	},
+	
+	glass: {
+	  background: "rgba(18, 24, 38, 0.72)",
+	  border: "rgba(255,255,255,0.08)",
+	  highlight: "rgba(255,255,255,0.05)",
+	  blur: "18px",
+	  shadow: "0 12px 40px rgba(0,0,0,0.35)"
+	},
+
+	gradients: {
+	  panel:
+		"linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
+
+	  primary:
+		"linear-gradient(135deg,#00C896 0%,#00E5AA 100%)",
+
+	  neutral:
+		"linear-gradient(135deg,#3B9EFF 0%,#74B8FF 100%)"
+	}
 };

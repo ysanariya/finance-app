@@ -13,15 +13,19 @@ import { theme } from "@/theme/theme.js";
 
 const c = theme.colors;
 
-export default function NetWorthChart() {
+export default function NetWorthChart({ date }) {
   const [data, setData] = useState([]);
 
   // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function loadData() {
       try {
+        const query = date
+          ? `?end=${encodeURIComponent(date)}`
+          : "";
+
         const result = await fetchWithAuth(
-          "http://localhost:8000/dashboard/trend"
+          `http://localhost:8000/dashboard/trend${query}`
         );
         setData(
           result.map((item) => ({
@@ -34,7 +38,7 @@ export default function NetWorthChart() {
       }
     }
     loadData();
-  }, []);
+  }, [date]);
 
   const isPositive =
     data.length > 1 &&

@@ -18,7 +18,10 @@ const card = {
   marginBottom: 0,
 };
 
-export default function KPISummaryCard({ summary }) {
+export default function KPISummaryCard({
+  summary,
+  periodLabel,
+}) {
   return (
     <div
       style={{
@@ -31,6 +34,7 @@ export default function KPISummaryCard({ summary }) {
       {/* INCOME */}
       <div style={card}>
         <div style={cardLabel}>Average Monthly Income</div>
+        <div style={periodStyle}>{periodLabel}</div>
         <div style={{ ...cardValue, color: theme.colors.positive }}>
           {formatINR(summary?.avg_monthly_income)}
         </div>
@@ -39,6 +43,7 @@ export default function KPISummaryCard({ summary }) {
       {/* EXPENSE */}
       <div style={card}>
         <div style={cardLabel}>Average Monthly Expenses</div>
+        <div style={periodStyle}>{periodLabel}</div>
         <div style={{ ...cardValue, color: theme.colors.negative }}>
           {formatINR(summary?.avg_monthly_expense)}
         </div>
@@ -47,6 +52,7 @@ export default function KPISummaryCard({ summary }) {
       {/* SURPLUS */}
       <div style={card}>
         <div style={cardLabel}>Average Monthly Surplus</div>
+        <div style={periodStyle}>{periodLabel}</div>
         <div style={{ ...cardValue, color: theme.colors.textPrimary }}>
           {formatINR(summary?.avg_monthly_surplus)}
         </div>
@@ -83,4 +89,12 @@ const cardValue = {
   fontFamily: theme.table.amountFontFamily,
   fontWeight: theme.table.amountFontWeight,
   fontSize: "22px",
+};
+
+const periodStyle = {
+  color: theme.colors.textMuted,
+  fontFamily: theme.typography.caption.fontFamily,
+  fontSize: theme.typography.caption.fontSize,
+  marginBottom: "12px",
+  marginTop: "-8px",
 };

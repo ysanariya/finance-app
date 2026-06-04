@@ -61,17 +61,23 @@ function StatCard({ label, value, delta, deltaPositive, subtext, valueColor }) {
   );
 }
 
-export default function TopStatCards() {
+export default function TopStatCards({ date }) {
   const [data, setData] = useState(null);
 
   // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const res = await fetchWithAuth("http://localhost:8000/dashboard/summary");
+      const query = date
+        ? `?date=${encodeURIComponent(date)}`
+        : "";
+
+      const res = await fetchWithAuth(
+        `http://localhost:8000/dashboard/summary${query}`,
+      );
       setData(res);
     }
     load();
-  }, []);
+  }, [date]);
 
   if (!data) return null;
 

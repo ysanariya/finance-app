@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { useDateFilter } from "../context/DateFilterContext";
 import { fetchWithAuth } from "../services/api";
 import { theme } from "../theme/theme";
+import ScreenPeriodControl from "../components/filters/ScreenPeriodControl";
+import { useScreenDateRange } from "../hooks/useScreenDateRange";
 
 import { formatINR } from "../utils/formatters";
 
@@ -25,23 +26,19 @@ export default function Cashflow() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [categoryTrend, setCategoryTrend] = useState([]);
 
-  const { filter } = useDateFilter();
+  const dateRange = useScreenDateRange(
+    "cashflow",
+    "current_financial_year",
+  );
 
   async function loadData() {
     try {
       setLoading(true);
 
-      const params = new URLSearchParams();
+      const params = dateRange.queryParams;
 
-      if (filter?.start) {
-        params.append("start_date", filter.start);
-      }
-
-      if (filter?.end) {
-        params.append("end_date", filter.end);
-      }
-
-      const query = params.toString() ? `?${params.toString()}` : "";
+      const paramsString = params.toString();
+      const query = paramsString ? `?${paramsString}` : "";
 
       const [
         summaryRes,
@@ -89,7 +86,7 @@ export default function Cashflow() {
         setSelectedCategory(topCategory);
 
         const trendRes = await fetchWithAuth(
-          `http://localhost:8000/dashboard/category-trend?category=${encodeURIComponent(topCategory)}${query ? `&${params.toString()}` : ""}`,
+          `http://localhost:8000/dashboard/category-trend?category=${encodeURIComponent(topCategory)}${paramsString ? `&${paramsString}` : ""}`,
         );
 
         setCategoryTrend(trendRes?.trend || []);
@@ -116,8 +113,6 @@ export default function Cashflow() {
           totalIncome > 0 ? ((c.amount / totalIncome) * 100).toFixed(1) : 0,
       }));
 
-      console.log(filter);
-
       setIncomeByCategory(incomeWithPercentages);
 
       setMerchants(
@@ -138,7 +133,7 @@ export default function Cashflow() {
 
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, [dateRange.start, dateRange.end]);
 
   const allMonths = [
     ...new Set([
@@ -192,15 +187,9 @@ export default function Cashflow() {
     try {
       setSelectedCategory(category);
 
-      const params = new URLSearchParams();
-
-      if (filter?.start) {
-        params.append("start_date", filter.start);
-      }
-
-      if (filter?.end) {
-        params.append("end_date", filter.end);
-      }
+      const params = new URLSearchParams(
+        dateRange.queryParams,
+      );
 
       params.append("category", category);
 
@@ -239,34 +228,49 @@ export default function Cashflow() {
     >
       {/* HEADER */}
 
-      <div style={{ marginBottom: "24px" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontFamily: theme.typography.heading.fontFamily,
-            fontWeight: theme.typography.heading.fontWeight,
-            fontSize: theme.typography.heading.fontSize,
-            letterSpacing: theme.typography.heading.letterSpacing,
-            color: theme.colors.textPrimary,
-          }}
-        >
-          Cash Flow Analytics
-        </h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          marginBottom: "24px",
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: theme.typography.heading.fontFamily,
+              fontWeight: theme.typography.heading.fontWeight,
+              fontSize: theme.typography.heading.fontSize,
+              letterSpacing: theme.typography.heading.letterSpacing,
+              color: theme.colors.textPrimary,
+            }}
+          >
+            Cash Flow Analytics
+          </h1>
 
-        <p
-          style={{
-            margin: "4px 0 0",
-            fontFamily: theme.typography.body.fontFamily,
-            fontSize: theme.typography.body.fontSize,
-            color: theme.colors.textSecondary,
-          }}
-        >
-          Income and Spending behaviour with cashflow trends
-        </p>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontFamily: theme.typography.body.fontFamily,
+              fontSize: theme.typography.body.fontSize,
+              color: theme.colors.textSecondary,
+            }}
+          >
+            Income and Spending behaviour with cashflow trends
+          </p>
+        </div>
+
+        <ScreenPeriodControl range={dateRange} />
       </div>
 
       {/* SUMMARY CARDS */}
-      <KPISummaryCard summary={summary} />
+      <KPISummaryCard
+        summary={summary}
+        periodLabel={dateRange.label}
+      />
 
       {/* CHART ROW */}
 
@@ -279,7 +283,10 @@ export default function Cashflow() {
         }}
       >
         {/* CASHFLOW TREND */}
-        <CashflowTrendChart combinedCashflowTrend={combinedCashflowTrend} />
+        <CashflowTrendChart
+          combinedCashflowTrend={combinedCashflowTrend}
+          periodLabel={dateRange.label}
+        />
 
         {/* CATEGORY ANALYTICS */}
         <div
@@ -295,6 +302,7 @@ export default function Cashflow() {
             categories={categories}
             selectedCategory={selectedCategory}
             onCategoryChange={handleCategoryChange}
+            periodLabel={dateRange.label}
           />
 
           {/* CATEGORY TREND */}
@@ -303,6 +311,7 @@ export default function Cashflow() {
             categoryTrend={categoryTrend}
             categories={categories}
             onCategoryChange={handleCategoryChange}
+            periodLabel={dateRange.label}
           />
         </div>
       </div>
@@ -316,10 +325,16 @@ export default function Cashflow() {
         }}
       >
         {/* TOP MERCHANTS TABLE */}
-        <MerchantTable merchants={merchants} />
+        <MerchantTable
+          merchants={merchants}
+          periodLabel={dateRange.label}
+        />
 
         {/* TOP INCOME TABLE */}
-        <IncomeTable incomeByCategory={incomeByCategory} />
+        <IncomeTable
+          incomeByCategory={incomeByCategory}
+          periodLabel={dateRange.label}
+        />
       </div>
     </div>
   );

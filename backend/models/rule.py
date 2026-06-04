@@ -1,10 +1,10 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from datetime import datetime
 
-from database import Base
+from database_rules import RulesBase
 
 
-class TransactionRule(Base):
+class TransactionRule(RulesBase):
     __tablename__ = "transaction_rules"
 
     id = Column(Integer, primary_key=True, index=True)

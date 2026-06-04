@@ -32,7 +32,6 @@ class BankTransaction(Base):
     
     matched_rule_id = Column(
         Integer,
-        ForeignKey("transaction_rules.id"),
         nullable=True
     )
 

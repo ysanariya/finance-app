@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from database import get_db
+from database import get_db      # IGNORE - only used for transactions, not rules
+from database_rules import get_rules_db # new import for rules database
 
 from models.rule import TransactionRule
 from models.transaction import BankTransaction
@@ -31,7 +32,7 @@ VALID_TRANSACTION_TYPES = [
 async def create_rule(
     rule: RuleCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_rules_db)
 ):
 
     if rule.match_type not in VALID_MATCH_TYPES:
@@ -86,7 +87,7 @@ async def create_rule(
 @router.get("/rules")
 async def get_rules(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_rules_db)
 ):
 
     result = await db.execute(
@@ -107,7 +108,7 @@ async def update_rule(
     rule_id: int,
     rule_update: RuleUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_rules_db)
 ):
 
     result = await db.execute(
@@ -151,100 +152,154 @@ async def update_rule(
 @router.post("/rules/reclassify")
 async def reclassify_transactions(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    rules_db: AsyncSession = Depends(get_rules_db),
+    finance_db: AsyncSession = Depends(get_db)
 ):
- 
+
     user_id = current_user.id
- 
-    # Get all active rules ordered by priority
-    rules_result = await db.execute(
+
+    # Load rules from rules.db
+
+    rules_result = await rules_db.execute(
         select(TransactionRule)
         .where(TransactionRule.is_active == True)
         .order_by(TransactionRule.priority.desc())
     )
- 
+
     rules = rules_result.scalars().all()
- 
-    # Get all transactions for this user
-    tx_result = await db.execute(
+
+    # Load transactions from finance.db
+
+    tx_result = await finance_db.execute(
         select(BankTransaction)
         .where(BankTransaction.user_id == user_id)
     )
- 
+
     transactions = tx_result.scalars().all()
- 
+
     updated_count = 0
     reclassified = []
- 
+
     for tx in transactions:
- 
-        # Normalise description the same way patterns are normalised at
-        # creation time — handles tabs, double-spaces, non-breaking spaces
-        # that come out of bank CSV exports and would silently break `in`
+
         description = " ".join(
             tx.description.strip().lower().split()
         )
- 
-        # Capture current values before reset (for results summary)
+
         prev_category = tx.category
         prev_merchant = tx.merchant
- 
-        # Default type from amount polarity
-        if tx.amount > 0:
-            tx.transaction_type = "income"
-        else:
-            tx.transaction_type = "expense"
- 
-        # Reset metadata
-        tx.category = None
-        tx.merchant = None
-        tx.classification_source = "unclassified"
-        tx.matched_rule_id = None
- 
-        # Apply rules
+        prev_type = tx.transaction_type
+
+        # Default type from polarity
+
+        default_type = (
+            "income"
+            if tx.amount > 0
+            else "expense"
+        )
+
+        new_category = None
+        new_merchant = None
+        new_type = default_type
+        matched_rule_id = None
+
         for rule in rules:
- 
-            # Pattern is already normalised at creation time
+
             pattern = rule.pattern.lower()
- 
+
             matched = False
- 
+
             if rule.match_type == "contains":
                 matched = pattern in description
+
             elif rule.match_type == "exact":
                 matched = pattern == description
- 
-            if matched:
-                tx.category = rule.category
-                tx.merchant = rule.merchant
- 
-                # Only override transaction_type when explicitly set;
-                # "infer" means keep the polarity-based default above
-                if rule.transaction_type and rule.transaction_type != "infer":
-                    tx.transaction_type = rule.transaction_type
- 
-                tx.classification_source = "rule"
-                tx.matched_rule_id = rule.id
-                updated_count += 1
- 
-                reclassified.append({
-                    "date":         str(tx.recorded_at.date()),
-                    "description":  tx.description,
-                    "old_category": prev_category,
-                    "new_category": rule.category,
-                    "old_merchant": prev_merchant,
-                    "new_merchant": rule.merchant,
-                    "matched_rule": rule.pattern,
-                    "amount":       float(tx.amount),
-                })
- 
-                break
- 
-    await db.commit()
- 
+
+            if not matched:
+                continue
+
+            new_category = rule.category
+            new_merchant = rule.merchant
+
+            if (
+                rule.transaction_type
+                and rule.transaction_type != "infer"
+            ):
+                new_type = rule.transaction_type
+
+            matched_rule_id = rule.id
+
+            break
+
+        changed = (
+
+            prev_category != new_category
+
+            or prev_merchant != new_merchant
+
+            or prev_type != new_type
+        )
+
+        if not changed:
+            continue
+
+        tx.category = new_category
+        tx.merchant = new_merchant
+        tx.transaction_type = new_type
+        tx.classification_source = (
+            "rule"
+            if matched_rule_id
+            else "unclassified"
+        )
+
+        # Safe only if you removed FK constraint
+        tx.matched_rule_id = matched_rule_id
+
+        updated_count += 1
+
+        reclassified.append({
+
+            "date":
+                str(tx.recorded_at.date()),
+
+            "description":
+                tx.description,
+
+            "old_category":
+                prev_category,
+
+            "new_category":
+                new_category,
+
+            "old_merchant":
+                prev_merchant,
+
+            "new_merchant":
+                new_merchant,
+
+            "old_type":
+                prev_type,
+
+            "new_type":
+                new_type,
+
+            "matched_rule":
+                matched_rule_id,
+
+            "amount":
+                float(tx.amount),
+        })
+
+    await finance_db.commit()
+
     return {
-        "message":      "Reclassification complete",
-        "updated":      updated_count,
-        "reclassified": reclassified,
+
+        "message":
+            "Reclassification complete",
+
+        "updated":
+            updated_count,
+
+        "reclassified":
+            reclassified,
     }
- 

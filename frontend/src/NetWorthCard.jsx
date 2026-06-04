@@ -4,17 +4,23 @@ import { theme } from "./theme/theme";
 
 const c = theme.colors;
 
-export default function NetWorthCard() {
+export default function NetWorthCard({ date }) {
   const [data, setData] = useState(null);
 
   // ── API call unchanged ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const res = await fetchWithAuth("http://localhost:8000/dashboard/summary");
+      const query = date
+        ? `?date=${encodeURIComponent(date)}`
+        : "";
+
+      const res = await fetchWithAuth(
+        `http://localhost:8000/dashboard/summary${query}`,
+      );
       setData(res);
     }
     load();
-  }, []);
+  }, [date]);
 
   if (!data) return null;
 
@@ -50,7 +56,7 @@ export default function NetWorthCard() {
             marginBottom: "6px",
           }}
         >
-          NET WORTH · APR 2026
+          NET WORTH · AS OF {date}
         </div>
 
         <div
